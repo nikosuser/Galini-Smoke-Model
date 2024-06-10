@@ -1,0 +1,24 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <Description>Farsite Flame Length</Description>
+    <UnitType>Meters</UnitType>
+    <Histograms>
+      <HistItem>
+        <HistMin>0.01864365131831631</HistMin>
+        <HistMax>5.757022093820813</HistMax>
+        <BucketCount>256</BucketCount>
+        <IncludeOutOfRange>1</IncludeOutOfRange>
+        <Approximate>0</Approximate>
+        <HistCounts>1|1|3|1|6|3|7|6|10|11|8|15|14|18|15|14|18|18|27|28|28|95|152|153|189|234|194|169|213|176|182|228|230|238|324|251|266|252|255|265|259|237|228|222|204|176|203|169|188|155|173|148|164|191|186|200|178|179|186|170|199|177|158|145|108|117|97|81|60|64|59|63|67|59|53|45|41|62|31|15|4|1|4|8|2|2|1|0|4|2|2|1|1|3|2|2|2|1|5|2|2|2|1|1|1|0|1|3|1|1|0|1|1|0|4|1|1|0|3|1|2|2|1|1|0|0|0|0|0|0|0|0|0|0|1|0|1|0|2|1|0|0|0|0|0|0|0|0|0|0|2|1|0|0|0|0|1|0|0|1|1|0|0|0|0|0|0|0|1|1|0|0|0|0|0|0|1|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|1|0|1|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|0|1</HistCounts>
+      </HistItem>
+    </Histograms>
+    <Metadata>
+      <MDI key="RepresentationType">THEMATIC</MDI>
+      <MDI key="STATISTICS_MAXIMUM">5.7458143234253</MDI>
+      <MDI key="STATISTICS_MEAN">1.0249899161532</MDI>
+      <MDI key="STATISTICS_MINIMUM">0.029851421713829</MDI>
+      <MDI key="STATISTICS_STDDEV">0.37156158401122</MDI>
+      <MDI key="UnitOfMeasure">Meters</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>

@@ -1,0 +1,24 @@
+<PAMDataset>
+  <PAMRasterBand band="1">
+    <Description>Farsite Rate Of Spread</Description>
+    <UnitType>m/min</UnitType>
+    <Histograms>
+      <HistItem>
+        <HistMin>-0.02608058278941925</HistMin>
+        <HistMax>17.68646554419326</HistMax>
+        <BucketCount>256</BucketCount>
+        <IncludeOutOfRange>1</IncludeOutOfRange>
+        <Approximate>0</Approximate>
+        <HistCounts>4|13|14|14|10|15|20|16|16|16|10|7|17|9|10|22|24|20|12|62|100|98|89|118|116|93|92|87|94|81|62|78|81|70|73|88|79|68|70|85|83|73|81|95|76|97|89|111|77|99|100|112|102|96|92|95|94|80|99|97|93|94|97|82|95|84|89|94|68|76|79|77|75|53|60|52|44|67|62|62|57|58|49|56|54|49|59|45|52|30|38|52|37|49|33|45|37|38|31|37|42|33|48|47|40|41|42|34|38|46|40|35|35|42|39|45|35|33|42|45|38|41|35|36|45|37|31|61|48|36|35|26|45|38|39|28|33|43|27|29|30|36|40|35|38|30|25|31|32|28|36|30|32|38|35|34|33|29|35|38|24|24|30|34|48|29|23|39|29|26|25|23|29|32|17|18|22|26|23|23|24|27|10|22|15|17|21|25|21|18|20|19|20|19|9|20|24|10|18|16|14|15|12|14|15|10|15|15|11|14|12|7|7|11|10|14|10|10|9|11|18|8|8|9|12|17|6|4|6|7|12|7|4|12|8|2|6|6|10|8|6|5|7|7|7|8|8|5|7|9|2|3|3|3|1|1</HistCounts>
+      </HistItem>
+    </Histograms>
+    <Metadata>
+      <MDI key="RepresentationType">THEMATIC</MDI>
+      <MDI key="STATISTICS_MAXIMUM">17.651870727539</MDI>
+      <MDI key="STATISTICS_MEAN">6.1628500304856</MDI>
+      <MDI key="STATISTICS_MINIMUM">0.0085142338648438</MDI>
+      <MDI key="STATISTICS_STDDEV">3.922985861805</MDI>
+      <MDI key="UnitOfMeasure">m/min</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>
