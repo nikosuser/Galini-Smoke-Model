@@ -18,7 +18,7 @@ close all;
 
 %% FARSITE FILE LOCATION
 
-simulationPath = "D:\CyprusGIS\Arakapas\25m/";
+simulationPath = "D:\OneDrive - Imperial College London\Imperial\PhD\RACEWILDFIRE\2Dsmoke\Galini-Smoke-Model/";
 
 rateofSpread = readmatrix(strcat(simulationPath, 'rateofspread.asc'),'FileType','text','NumHeaderLines',6);
 fuels = readmatrix(strcat(simulationPath, 'ArakapasFuels[25].asc'),'FileType','text','NumHeaderLines',6);
