@@ -16,9 +16,12 @@ close all;
 %stabilityMode = 'pessimistic'; %optimistic / pessimistic wrt choosing between two mismatching atmospheric stability calculations. Optimistic will choose unstable conditions
 
 
+%Download spatialFOFEM from https://www.alturassolutions.com/FB/FB_API.htm
+
+
 %% FARSITE FILE LOCATION
 
-simulationPath = "D:\OneDrive - Imperial College London\Imperial\PhD\RACEWILDFIRE\2Dsmoke\Galini-Smoke-Model/";
+simulationPath = "D:/OneDrive - Imperial College London/Imperial/PhD/RACEWILDFIRE/2Dsmoke/Galini-Smoke-Model/";
 
 rateofSpread = readmatrix(strcat(simulationPath, 'rateofspread.asc'),'FileType','text','NumHeaderLines',6);
 fuels = readmatrix(strcat(simulationPath, 'ArakapasFuels[25].asc'),'FileType','text','NumHeaderLines',6);
@@ -139,7 +142,7 @@ geotiffwrite(strcat(simulationPath, 'FCCS_GALINI.tif'),fuelsFOFEM,geodata, "Coor
 
 fprintf("FOFEM FCCS Fuel Map Saved!\n")
 
-fofemInputFileLoc = "C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\FOFEM_GALINI.txt";
+fofemInputFileLoc = simulationPath + "\FOFEM_GALINI.txt";
 if isfile(fofemInputFileLoc)
     delete(fofemInputFileLoc)
 end
@@ -159,7 +162,7 @@ writelines("FOFEM_SMOLDERING_PM10: ",fofemInputFileLoc,WriteMode="append")
 
 fprintf("FOFEM Input File Saved, Starting FOFEM!\n")
 
-commandFOFEM = "C:\Users\nikos\Downloads\FB\FB\bin\TestSpatialFOFEM C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\FOFEM_GALINI.txt C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\OutputGALINI\";
+commandFOFEM = '"' + simulationPath + 'bin/TestSpatialFOFEM"' + ' "' + simulationPath + 'FOFEM_GALINI.txt"' + ' "' + simulationPath + '"';
 system(commandFOFEM);
 
 fprintf("FOFEM Complete\n")
@@ -168,7 +171,7 @@ fprintf("FOFEM Complete\n")
 
 % fofem values are in lb/acre
 
-fofemOutput = "C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\OutputGALINI\";
+fofemOutput = simulationPath;
 [flamingPM10,geodata] = readgeoraster(strcat(fofemOutput, '_Flaming PM10.tif'));
 [flamingPM25,geodata] = readgeoraster(strcat(fofemOutput, '_Flaming PM25.tif'));
 [smolderingPM10,geodata] = readgeoraster(strcat(fofemOutput, '_Smoldering PM10.tif'));

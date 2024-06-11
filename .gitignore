@@ -1,0 +1,17 @@
+bin/
+_Warnings.csv
+_Total PM25.tif.aux.xml
+_Total PM25.tif
+_Total PM10.tif.aux.xml
+_Total PM10.tif
+_Statistics.csv
+_Smoldering PM25.tif.aux.xml
+_Smoldering PM25.tif
+_Smoldering PM10.tif.aux.xml
+_Smoldering PM10.tif
+_Flaming PM25.tif.aux.xml
+_Flaming PM25.tif
+_Flaming PM10.tif.aux.xml
+_Flaming PM10.tif
+_All.tif.aux.xml
+_All.tif

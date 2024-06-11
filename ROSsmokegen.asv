@@ -16,9 +16,12 @@ close all;
 %stabilityMode = 'pessimistic'; %optimistic / pessimistic wrt choosing between two mismatching atmospheric stability calculations. Optimistic will choose unstable conditions
 
 
+%Download spatialFOFEM from https://www.alturassolutions.com/FB/FB_API.htm
+
+
 %% FARSITE FILE LOCATION
 
-simulationPath = "D:\CyprusGIS\Arakapas\25m/";
+simulationPath = "D:\OneDrive - Imperial College London\Imperial\PhD\RACEWILDFIRE\2Dsmoke\Galini-Smoke-Model/";
 
 rateofSpread = readmatrix(strcat(simulationPath, 'rateofspread.asc'),'FileType','text','NumHeaderLines',6);
 fuels = readmatrix(strcat(simulationPath, 'ArakapasFuels[25].asc'),'FileType','text','NumHeaderLines',6);
@@ -32,7 +35,7 @@ ignitionTime = [2021,7,2,1300]; %Year,month,day,time
 IgnitionNode = [433,479];
 cellsize = 25;
 
-print("FARSITE Input Parameters Set!")
+fprintf("FARSITE Input Parameters Set!\n")
 
 %% VALUES THAT NEED MORE STUDY / MAGIC NUMBERS!
 
@@ -42,9 +45,9 @@ verticalSmokeSpeedSmoldering = 1;
 smokeTempFlaming = 120;
 smokeTempSmoldering = 60;
 
-minimumParticleDensity = 10^-3;
+minimumParticleDensity = 10^-4;
 
-print("Magic Numbers Set!")
+fprintf("Magic Numbers Set!\n")
 
 %% STABILITY VALUES - WEATHER INPUTS
 
@@ -58,7 +61,7 @@ stabilityMode='optimistic';
 windAngle = -30;
 windVelocity = 1;
 
-print("Weather Stability Para")
+fprintf("Weather Stability Parameters Set!\n")
 
 %% VALUES FROM THE SIMULATION
 fid_ROS = fopen(strcat(simulationPath, 'rateofspread.asc'));
@@ -74,6 +77,8 @@ clear tline values_str
 
 timestep = 1;               %minute
 dispersionModelSteps = cellsize;
+
+fprintf("Raster metadata Set!\n")
 
 %% FOFEM PREPARATION INCLUDING GEOTIFF CONVERSIONS
 
@@ -135,7 +140,9 @@ fuelsFOFEM = SBtoFCCS(fuels);
 
 geotiffwrite(strcat(simulationPath, 'FCCS_GALINI.tif'),fuelsFOFEM,geodata, "CoordRefSysCode","EPSG:26986")
 
-fofemInputFileLoc = "C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\FOFEM_GALINI.txt";
+fprintf("FOFEM FCCS Fuel Map Saved!\n")
+
+fofemInputFileLoc = simulationPath + "\FOFEM_GALINI.txt";
 if isfile(fofemInputFileLoc)
     delete(fofemInputFileLoc)
 end
@@ -153,14 +160,18 @@ writelines("FOFEM_FLAMING_PM10: ",fofemInputFileLoc,WriteMode="append")
 writelines("FOFEM_SMOLDERING_PM25: ",fofemInputFileLoc,WriteMode="append")
 writelines("FOFEM_SMOLDERING_PM10: ",fofemInputFileLoc,WriteMode="append")
 
-commandFOFEM = "C:\Users\nikos\Downloads\FB\FB\bin\TestSpatialFOFEM C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\FOFEM_GALINI.txt C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\OutputGALINI\";
+fprintf("FOFEM Input File Saved, Starting FOFEM!\n")
+
+commandFOFEM = simulationPath + "bin/TestSpatialFOFEM " + simulationPath + "FOFEM_GALINI.txt " + simulationPath + "C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\OutputGALINI\";
 system(commandFOFEM);
+
+fprintf("FOFEM Complete\n")
 
 %% FOFEM FOR EMISSIONS -- HARDCODED VALUES FOR NOW
 
 % fofem values are in lb/acre
 
-fofemOutput = "C:\Users\nikos\Downloads\FB\FB\TestSpatialFOFEM\SampleData\OutputGALINI\";
+fofemOutput = simulationPath;
 [flamingPM10,geodata] = readgeoraster(strcat(fofemOutput, '_Flaming PM10.tif'));
 [flamingPM25,geodata] = readgeoraster(strcat(fofemOutput, '_Flaming PM25.tif'));
 [smolderingPM10,geodata] = readgeoraster(strcat(fofemOutput, '_Smoldering PM10.tif'));
@@ -186,6 +197,8 @@ totalSmoulderingEmissions = smolderingPM10 + smolderingPM25;
 
 massFlowRateFlaming = totalFlamingEmissions./flamingTime;
 massFlowRateSmoldering = totalSmoulderingEmissions./smoulderingTime;
+
+fprintf("FOFEM Mass Flow Rate Calculations Complete!\n")
 
 %Center of smokeDomain is user Defined, the fire will be placed with the
 %center being in the top right corner?
@@ -261,11 +274,13 @@ elapsedTime = zeros(length(rateofSpreadCut(:,1)), length(rateofSpreadCut(1,:)));
 
 clear maximumX maximumY minimumX minimumY notFound searchingX searchingY IgnitionNode
 
+fprintf("Raster Cropping Complete!\n")
 
 %% ATMOSPHERIC STABILITY CALCULATIONS
 
 [P,dispersionCoefficientY,dispersionCoefficientZ] = getDispersionCoefficients(dayOrNight,surfaceRoughness,insolation,nightOvercast,stabilityMode,windVelocityDirectionVariation,windVelocity);
    
+fprintf("Dispersion Coefficients Set!\n")
 
 %% SIM PREPARATION
 neighborPatternX = [-1,0,1];
@@ -281,6 +296,8 @@ residencyTime=cellsize./rateofSpreadCut;
 
 TopDownRaster(10*inf_lin([length(activatedNodes(1, :)),length(activatedNodes(:, 1))])) = 0;
 DriverLevelDensity(10*inf_lin([length(activatedNodes(1, :)),length(activatedNodes(:, 1))])) = 0;
+
+fprintf("Output Rasters Instantiated, Main Loop Starting!\n")
 
 %% MAIN LOOP
 % 0: Not on fire yet
