@@ -8,19 +8,19 @@
     "net8.0": []
   },
   "packageFolders": {
-    "C:\\Users\\nikos\\.nuget\\packages\\": {}
+    "C:\\Users\\sx1022\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\OneDrive - Imperial College London\\Imperial\\PhD\\RACEWILDFIRE\\2Dsmoke\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
+      "projectUniqueName": "C:\\Users\\sx1022\\OneDrive - Imperial College London\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
       "projectName": "Galini-C#",
-      "projectPath": "D:\\OneDrive - Imperial College London\\Imperial\\PhD\\RACEWILDFIRE\\2Dsmoke\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
-      "packagesPath": "C:\\Users\\nikos\\.nuget\\packages\\",
-      "outputPath": "D:\\OneDrive - Imperial College London\\Imperial\\PhD\\RACEWILDFIRE\\2Dsmoke\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\obj\\",
+      "projectPath": "C:\\Users\\sx1022\\OneDrive - Imperial College London\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
+      "packagesPath": "C:\\Users\\sx1022\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\sx1022\\OneDrive - Imperial College London\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\nikos\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\sx1022\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [

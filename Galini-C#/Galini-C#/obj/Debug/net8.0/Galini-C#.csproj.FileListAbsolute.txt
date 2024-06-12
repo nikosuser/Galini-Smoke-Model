@@ -1,0 +1,30 @@
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.AssemblyInfoInputs.cache
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.AssemblyInfo.cs
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.csproj.CoreCompileInputs.cache
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.sourcelink.json
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.exe
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.deps.json
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.runtimeconfig.json
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.dll
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.pdb
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.dll
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\refint\Galini-C#.dll
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.pdb
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.genruntimeconfig.cache
+C:\Users\sx1022\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\ref\Galini-C#.dll
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.exe
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.deps.json
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.runtimeconfig.json
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.dll
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\Galini-C#.pdb
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.AssemblyInfoInputs.cache
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.AssemblyInfo.cs
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.csproj.CoreCompileInputs.cache
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.sourcelink.json
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.dll
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\refint\Galini-C#.dll
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.pdb
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.genruntimeconfig.cache
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\ref\Galini-C#.dll
