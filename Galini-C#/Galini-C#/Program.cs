@@ -8,7 +8,6 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Net.Mime.MediaTypeNames;
 using System.Text.Json;
-//using GDC;
 
 namespace Galini_C_
 {
@@ -17,26 +16,31 @@ namespace Galini_C_
 
         public static void Main(string[] args)
         {
-            var dispCoeffoutput = new GDC();
-            double[] dispCoeffOut = dispCoeffoutput.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
+            //----------------------------INPUT VARIABLES--------------------------------------
 
-            //var output = new DisModel();
-            //double[,] topDownRaster = output.dispersionModel1(1e-5, 350, 10, 3, dispCoeffOut, 3, 5);
-            //double[,] driverLevelDensity = output.dispersionModel2(1e-5, 350, 10, 3, dispCoeffOut, 3, 5);
-            //OutputFile(topDownRaster, "C:\\Users\\sx1022\\Documents\\GitHub\\Galini-Smoke-Model/test2.csv");
+            double[] burningPoint = [12, 12];       //coordinates of point on fire (about fire domain)
+            double scaleFactor = 5;                 //Scale factor between fire domain and smoke domain
+            double[] fireDomainDims = [20, 30];     //Total fire domain size 
+            double smokeTemp = 200;                 //Smoke exit temperature (C)
+            double exitVelocity = 10;               //Smoke upwards velocity (m/s)              (??)
+            double windVelocity = 15;               //wind magnitude (km/h)
+            double WindAngle = 70;                  //wind angle (wind vector starting from the vertical downwards, anticlockwise)
+            double cellsize = 30;                   //size of each landscape point (m)
+            double emissionMassFlowRate = 2000;     //emission species mass flow rate (m3/s)    (??)
+            double stackDiameter = cellsize;        //effective smoke stack diameter
+            double atmosphericP = 1;                //ambient pressure (bar)
+            double atmosphericTemp = 300;           //Ambient temperature (K)
 
-            double scaleSize = 5;
-            var output = new DisModelNEW();
-            double[,] topDownRaster = output.dispersionModel1([12, 12], scaleSize, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
-            double[,] driverLevelDensity = output.dispersionModel2([12, 12], scaleSize, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
+            //in future: enforce consistent units!
 
-            Console.WriteLine("jj");
+            //--------------------------------------------------------------------------------
+            var DispersionModelling = new DispersionModelling();
             
-            // Specify the file path
-            string filePath = "C:\\Users\\sx1022\\Documents\\GitHub\\Galini-Smoke-Model/test4.csv";
+            double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
+            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPoint, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
+            //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
-            // Call the method to write the matrix to CSV
-            WriteMatrixToCSV(topDownRaster, filePath);
+            WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + "/output.csv");
         }
         public static void WriteMatrixToCSV(double[,] matrix, string filePath)
         {
@@ -45,33 +49,16 @@ namespace Galini_C_
                 int rows = matrix.GetLength(0);
                 int cols = matrix.GetLength(1);
 
-                for (int i = 0; i < rows; i++)
+                for (int y = 0; y < cols; y++)
                 {
                     string[] row = new string[cols];
-                    for (int j = 0; j < cols; j++)
+                    for (int x = 0; x < rows; x++)
                     {
-                        row[j] = matrix[i, j].ToString();
+                        row[x] = matrix[x, y].ToString();
                     }
                     writer.WriteLine(string.Join(",", row));
                 }
             }
-
-            /*public static void OutputFile(double[,] boundary, string PerilOutput)      //output variable to a new text file, shamelessly stolen
-            {
-                using (var sw = new StreamWriter(PerilOutput))  //beyond here the code has been shamelessly stolen
-                {
-                    for (int i = 0; i < boundary.GetLength(1); i++)   //for all elements in the output array
-                    {
-                        for (int j = 0; j < boundary.GetLength(0); j++)
-                        {
-                            sw.Write(boundary[j, i] + " ");       //write the element in the file
-                        }
-                        sw.Write("\n");
-                    }
-                    sw.Flush();                                 //i dont really know
-                    sw.Close();                                 //close opened output text file
-                }
-            }*/
         }
     }
 }
