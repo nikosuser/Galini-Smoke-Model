@@ -150,14 +150,18 @@ namespace Galini_C_
 
             //--------------------------------------------------------------------------------
             var DispersionModelling = new DispersionModelling();
-            
-            double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
-            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
+
+            Console.WriteLine(DispersionModelling.FindInjectionHeight_Andersen(30, 20, 100000, -6.5, -9.8, 1700, 20));
+
+
+
+            //double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
+            //double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
             string filePath = "/output.csv";
             WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
-            WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
+            //WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
         }
         public static void WriteMatrixToCSV(double[,] matrix, string filePath)
         {

@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Reflection.Metadata;
+using Microsoft.VisualBasic;
 
 namespace Galini_C_
 {
@@ -249,6 +250,8 @@ namespace Galini_C_
             return [dispersionCoefficientY[0], dispersionCoefficientY[1], dispersionCoefficientY[2], dispersionCoefficientZ[0], dispersionCoefficientZ[1], dispersionCoefficientZ[2], P];
         }
 
+
+
         private static double Erf(double x)
         {
             // constants
@@ -303,8 +306,56 @@ namespace Galini_C_
 
             return steadyStateHeight;
         }
-        //topDownRaster
-        
+
+        public double FindInjectionHeight_Andersen(double cellsize, double T_amb, double P_amb, double environemntalLapseRate, double dryAdiabaticLapseRate, double firelineIntensity, double ROS)
+        {
+            T_amb = T_amb + 273;                                            //C to K
+            environemntalLapseRate = environemntalLapseRate / 1000;         //C/km to C/m
+            dryAdiabaticLapseRate = dryAdiabaticLapseRate / 1000;           //C/km to C/m
+            firelineIntensity = firelineIntensity * 1000;                   //kW/m to W/m
+            ROS = ROS / 60;                                                 //m/min to m/s
+
+            double Q_supplied = firelineIntensity * cellsize / ROS;
+
+            double tolerance = 0.1;
+            int maxIterations = 100;
+            int iteration = 0;
+
+            double guess1 = 0;
+            double guess2 = 2000;
+
+            double newGuess = 0;
+
+            double Q_required1 = AndersenRequiredEnergy(guess1, cellsize, T_amb, P_amb, environemntalLapseRate, dryAdiabaticLapseRate, firelineIntensity, ROS);
+            double Q_required2 = AndersenRequiredEnergy(guess2, cellsize, T_amb, P_amb, environemntalLapseRate, dryAdiabaticLapseRate, firelineIntensity, ROS);
+
+
+            while (Math.Abs(1 - (Q_supplied / Q_required2)) > tolerance && iteration < maxIterations)
+            {
+                // Secant Method formula
+                newGuess = guess2 - (Q_required2 - Q_supplied) * (guess2 - guess1) / (Q_required2 - Q_required1);
+
+                // Update guesses and required energy
+                guess1 = guess2;
+                Q_required1 = Q_required2;
+
+                guess2 = newGuess;
+                Q_required2 = AndersenRequiredEnergy(guess2, cellsize, T_amb, P_amb, environemntalLapseRate, dryAdiabaticLapseRate, firelineIntensity, ROS);
+
+                iteration++;
+                Console.WriteLine(iteration);
+            }
+            return newGuess;
+        }
+
+        private double AndersenRequiredEnergy(double injectionHeight, double cellsize, double T_amb, double P_amb, double environemntalLapseRate, double dryAdiabaticLapseRate, double firelineIntensity, double ROS)
+        {
+            return 0.5 * P_amb * cellsize * cellsize * injectionHeight * 
+                Math.Log(1 + (injectionHeight * (environemntalLapseRate - dryAdiabaticLapseRate)) / T_amb) * 
+                (1 - Math.Pow((1 + environemntalLapseRate * injectionHeight / T_amb), (-9.81 / (environemntalLapseRate * 287.05))));
+            
+        }
+
         public double[,] DispersionModel_topDownConcentration(double[,] burningPoint_fireDomain, double smokeDomainScaleFactor, double[] fireDomainDims, double[,] smokeTemp, double[,] exitVelocity, double windVelocity, double WindAngle, double[] dispCoeff, double cellsize, double emissionMassFlowRate, double stackDiameter, double atmosphericP, double atmosphericTemp)
         {
             ///Method that calculates the total top-down smoke concentration for a landscape. 
