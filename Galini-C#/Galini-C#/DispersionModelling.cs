@@ -283,7 +283,7 @@ namespace Galini_C_
             double cy = burningPoint[1];
 
             //mess with the wind to get it to point right
-            double theta = (180 - windAngle - 90.0) * Math.PI / 180;
+            double theta = (90-windAngle) * Math.PI / 180;
 
             //rotate the point (do not reproject about the stable point)
             double p_x = Math.Cos(theta) * (px - cx) - Math.Sin(theta) * (py - cy) ;
@@ -304,62 +304,136 @@ namespace Galini_C_
             return steadyStateHeight;
         }
         //topDownRaster
-        public double[,] DispersionModel_topDownConcentration(double[] burningPoint_fireDomain, double smokeDomainScaleFactor, double[] fireDomainDims, double smokeTemp, double exitVelocity, double windVelocity, double WindAngle, double[] dispCoeff, double cellsize, double emissionMassFlowRate, double stackDiameter, double atmosphericP, double atmosphericTemp)
+        
+        public double[,] DispersionModel_topDownConcentration(double[,] burningPoint_fireDomain, double smokeDomainScaleFactor, double[] fireDomainDims, double[,] smokeTemp, double[,] exitVelocity, double windVelocity, double WindAngle, double[] dispCoeff, double cellsize, double emissionMassFlowRate, double stackDiameter, double atmosphericP, double atmosphericTemp)
         {
             ///Method that calculates the total top-down smoke concentration for a landscape. 
             ///Returns the smoke domain.
             
-            double steadyStateHeight = FindInjectionHeight(smokeTemp, exitVelocity, windVelocity, stackDiameter, atmosphericP, atmosphericTemp);
             double WindAngle_rad = (WindAngle) * (Math.PI / 180);
+            double steadyStateHeight;
 
             double w = fireDomainDims[0];
             double l = fireDomainDims[1];
             double[] smokeDomainDims = [smokeDomainScaleFactor * w, smokeDomainScaleFactor * l];
-            double[] burningPoint_smokeDomain = [smokeDomainScaleFactor * w / 2 - (w/2 - burningPoint_fireDomain[0]), smokeDomainScaleFactor * l / 2 - (l / 2 - burningPoint_fireDomain[1])];
-
+            
             int rows = (int)smokeDomainDims[0];
             int cols = (int)smokeDomainDims[1];
 
             double[,] topDownRaster = new double[rows, cols];
 
-            for (int x = 0; x < rows; x++)
+            for (int i = 0; i < w; i++)
             {
-                for (int y = 0; y < cols; y++)
+                for (int j = 0; j < l; j++)
                 {
-                    if (WindAngle < 180 && x > (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y)/Math.Tan(WindAngle_rad)))   //check if target point is "behind" the plume when the wind vector is pointing to the left
+                    if (burningPoint_fireDomain[i, j] != 0)
                     {
-                        topDownRaster[x, y] = -1;
+                        steadyStateHeight = FindInjectionHeight(smokeTemp[i, j], exitVelocity[i, j], windVelocity, stackDiameter, atmosphericP, atmosphericTemp);
+                        Console.WriteLine(i.ToString() + ", " + j.ToString());
+
+                        switch (burningPoint_fireDomain[i, j])
+                        {
+                            case 1: // burning
+                                
+                                for (int x = 0; x < rows; x++)
+                                {
+                                    for (int y = 0; y < cols; y++)
+                                    {
+                                        double[] burningPoint_smokeDomain = [smokeDomainScaleFactor * w / 2 - (w / 2 - i), smokeDomainScaleFactor * l / 2 - (l / 2 - j)];
+
+                                        if (WindAngle < 180 && x > (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))   //check if target point is "behind" the plume when the wind vector is pointing to the left
+                                        {
+                                            topDownRaster[x, y] += 0;
+                                        }
+                                        else if (WindAngle >= 180 && x < (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))    //as above but if the wind is pointing to the right
+                                        {
+                                            topDownRaster[x, y] += 0;
+                                        }
+                                        else
+                                        {
+                                            double[] XYplume = getCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], WindAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
+
+                                            if ( burningPoint_smokeDomain[0] == Convert.ToDouble(x) && burningPoint_smokeDomain[1] == Convert.ToDouble(y) )
+                                            {
+                                                topDownRaster[x, y] += 0;
+                                            }
+                                            else
+                                            {
+                                                double _x = XYplume[0] * cellsize;
+                                                double _y = XYplume[1] * cellsize;      //convert to meters
+
+                                                double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
+                                                double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
+
+                                                double termA = (Math.PI / 2) * (emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
+                                                               Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
+
+                                                double zMax = 300000;
+                                                double zMin = 0;        //Hardcoded values instead of integrating 
+
+                                                double termB = Erf((zMax - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
+                                                               Erf((zMax + steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2)));
+
+                                                double termC = Erf((zMin - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
+                                                               Erf((zMin + steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2)));
+
+                                                topDownRaster[x, y] += termA * dispersionCoefficientZ * (termB - termC);
+                                            }
+                                            
+                                        }
+                                    }
+                                }
+                                break;
+
+                            case 2: // smoldering
+                              
+                                for (int x = 0; x < rows; x++)
+                                {
+                                    for (int y = 0; y < cols; y++)
+                                    {
+                                        double[] burningPoint_smokeDomain = [smokeDomainScaleFactor * w / 2 - (w / 2 - i), smokeDomainScaleFactor * l / 2 - (l / 2 - j)];
+
+                                        if (WindAngle < 180 && x > (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))   //check if target point is "behind" the plume when the wind vector is pointing to the left
+                                        {
+                                            topDownRaster[x, y] += 0;
+                                        }
+                                        else if (WindAngle >= 180 && x < (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))    //as above but if the wind is pointing to the right
+                                        {
+                                            topDownRaster[x, y] += 0;
+                                        }
+                                        else
+                                        {
+                                            double[] XYplume = getCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], WindAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
+
+                                            double _x = XYplume[0] * cellsize;
+                                            double _y = XYplume[1] * cellsize;      //convert to meters
+
+                                            double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
+                                            double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
+
+                                            double termA = (Math.PI / 2) * (emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
+                                                           Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
+
+                                            double zMax = 300000;
+                                            double zMin = 0;        //Hardcoded values instead of integrating 
+
+                                            double termB = Erf((zMax - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
+                                                           Erf((zMax + steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2)));
+
+                                            double termC = Erf((zMin - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
+                                                           Erf((zMin + steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2)));
+
+                                            topDownRaster[x, y] += termA * dispersionCoefficientZ * (termB - termC);
+                                        }
+                                    }
+                                }
+                                break;
+                        }
                     }
-                    else if(WindAngle >= 180 && x < (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))    //as above but if the wind is pointing to the right
-                    {
-                        topDownRaster[x, y] = -1;
-                    }
-                    else
-                    {
-                        double[] XYplume = getCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], WindAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
-
-                        double _x = XYplume[0] * cellsize;
-                        double _y = XYplume[1] * cellsize;      //convert to meters
-
-                        double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
-                        double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
-
-                        double termA = (Math.PI / 2) * (emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
-                                       Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
-
-                        double zMax = 300000;
-                        double zMin = 0;        //Hardcoded values instead of integrating 
-
-                        double termB = Erf((zMax - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
-                                       Erf((zMax + steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2)));
-
-                        double termC = Erf((zMin - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
-                                       Erf((zMin + steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2)));
-
-                        topDownRaster[x, y] = termA * dispersionCoefficientZ * (termB - termC);
-                    }
+                    
                 }
             }
+
             return topDownRaster;
         }
 
