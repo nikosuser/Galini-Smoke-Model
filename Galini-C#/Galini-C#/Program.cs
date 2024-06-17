@@ -88,7 +88,7 @@ namespace Galini_C_
             //----------------------------INPUT VARIABLES--------------------------------------
 
             double windVelocity = 15;               //wind magnitude (km/h)
-            double WindAngle = 30;                  //wind angle (wind vector starting from the vertical downwards, anticlockwise)
+            double WindAngle = 270;                  //wind angle (wind vector starting from the vertical downwards, anticlockwise)
             double cellsize = 30;                   //size of each landscape point (m)
             double emissionMassFlowRate = 2000;     //emission species mass flow rate (m3/s)    (??)
             double stackDiameter = cellsize;        //effective smoke stack diameter
@@ -155,13 +155,13 @@ namespace Galini_C_
 
 
 
-            //double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
-            //double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
+            double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
+            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
             string filePath = "/output.csv";
             WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
-            //WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
+            WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
         }
         public static void WriteMatrixToCSV(double[,] matrix, string filePath)
         {
