@@ -321,7 +321,13 @@ namespace Galini_C_
         private double FindInjectionHeight(double smokeTemp, double exitVelocity, double windVelocity, double stackDiameter, double atmosphericP, double atmosphericTemp)
         {
             // Method that calculate injection height
-            // 6 Inputs are double smoke temperature, double exit velocity, double wind velocity, double stack diameter, double atmospheic pressure, double atmospheric temperature
+            // 6 Inputs:
+            // double smoke temperature,
+            // double exit velocity,
+            // double wind velocity,
+            // double stack diameter,
+            // double atmospheic pressure,
+            // double atmospheric temperature
             // Return injection height
 
             double a = 1; // ground reflection coefficient, usual conservative value is 1
@@ -421,9 +427,22 @@ namespace Galini_C_
             //double smokeDomainScaleFactor,
             //1*2 double array of fireDomain dimensions (width, lenght),
             //double 2d matrix of smoke temperature in fire domain,
-            //double 2d matrix of exitVelocity in fire domain, double windVelocity, double WindAngle, 1*7 double array of values to calculate dispersion coeffients, double cellsize, double emissionMassFlowRate, double stackDiameter, double atmospheric pressure, double atmospheric temperature
+            //double 2d matrix of exitVelocity in fire domain,
+            //double windVelocity, double WindAngle,
+            //1*7 double array of values to calculate dispersion coeffients,
+            //double cellsize, double emissionMassFlowRate,
+            //double stackDiameter,
+            //double atmospheric pressure,
+            //double atmospheric temperature
             //Returns the total top-down smoke concentration in the smoke domain.
-
+            if (WindAngle == 0)
+            {
+                WindAngle = 0.00001;
+            }
+            if (WindAngle == 180)
+            {
+                WindAngle = 180+0.00001;
+            }
             double WindAngle_rad = (90-WindAngle) * (Math.PI / 180);
             double steadyStateHeight;
 

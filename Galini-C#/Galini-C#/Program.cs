@@ -11,6 +11,8 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using System.Globalization;
 using System.IO;
+using System.Xml.Linq;
+using Microsoft.VisualBasic;
 
 
 namespace Galini_C_
@@ -18,7 +20,7 @@ namespace Galini_C_
     internal class Program
     {
         // read asc file
-        private static double[,] GetAscFile(string rootPath, string whichFile, int skipLines = 6)
+        private static double[,] GetAscFile(string rootPath, string whichFile, int skipLines)
         {
             string filePath = Path.Combine(rootPath, whichFile);
 
@@ -80,20 +82,38 @@ namespace Galini_C_
 
             return resultMatrix;
         }
-   
+        // write csv file
+        public static void WriteMatrixToCSV(double[,] matrix, string filePath)
+        {
+            using (StreamWriter writer = new StreamWriter(filePath))
+            {
+                int rows = matrix.GetLength(0);
+                int cols = matrix.GetLength(1);
 
+                for (int x = 0; x < cols; x++)
+                {
+                    string[] row = new string[cols];
+                    for (int y = 0; y < rows; y++)
+                    {
+                        row[y] = matrix[x, y].ToString();
+                    }
+                    writer.WriteLine(string.Join(",", row));
+                }
+            }
+        }
 
         public static void Main(string[] args)
         {
             //----------------------------INPUT VARIABLES--------------------------------------
 
-            double windVelocity = 15;               //wind magnitude (km/h)
-            double WindAngle = 270;                  //wind angle (wind vector starting from the vertical downwards, anticlockwise)
+            double windVelocity = 20;               // initialize wind magnitude (km/h)
+            double WindAngle = 180;                  //initialize wind angle (wind vector starting from the vertical downwards, anticlockwise)
+            double atmosphericTemp = 300;                 //initialize Ambient temperature (K)
             double cellsize = 30;                   //size of each landscape point (m)
             double emissionMassFlowRate = 2000;     //emission species mass flow rate (m3/s)    (??)
             double stackDiameter = cellsize;        //effective smoke stack diameter
             double atmosphericP = 1;                //ambient pressure (bar)
-            double atmosphericTemp = 300;           //Ambient temperature (K)
+            
 
             double time = 60; //mins
             double burning_period = 10;
@@ -101,10 +121,40 @@ namespace Galini_C_
             double scaleFactor = 2;                 //Scale factor between fire domain and smoke domain
 
 
-            // read burning point matrix with time
+            // Read the input matrix from the weather.wxs file
+            string filePath1 ="weather.wxs";
             string rootPath = System.IO.Directory.GetCurrentDirectory();
+            double[,] Weather_variables = GetAscFile(rootPath, filePath1, 4);
+            // read burning point matrix with time
             string whichFile = "arrivalTime.asc";
-            double[,] burningPointMatrix_time = GetAscFile(rootPath, whichFile);
+            double[,] burningPointMatrix_time = GetAscFile(rootPath, whichFile, 6);
+
+            // ask for the specific date and time
+            double Year = 2024;
+            double Month = 5;
+            double Day = 30;
+            double Hour = 1200;
+           /* Console.WriteLine("Input the year");
+            double Year = Convert.ToDouble(Console.ReadLine());
+            Console.WriteLine("Input the month");
+            double Month = Convert.ToDouble(Console.ReadLine());
+            Console.WriteLine("Input the day");
+            double Day = Convert.ToDouble(Console.ReadLine());
+            Console.WriteLine("Input the hour");
+            double Hour = Convert.ToDouble(Console.ReadLine());*/
+
+           // read the corresponding variables 
+            for (int i = 0; i < Weather_variables.GetLength(0); i++)
+            {
+                if (Weather_variables[i,0] == Year && Weather_variables[i, 1] == Month && Weather_variables[i, 2] == Day && Weather_variables[i, 3] == Hour)
+                {
+                    atmosphericTemp = Weather_variables[i, 4];
+                    windVelocity = Weather_variables[i, 7];
+                    WindAngle = Weather_variables[i, 8];
+                    break;
+                }
+            }
+
 
             int width_fire = burningPointMatrix_time.GetLength(0);
             int length_fire = burningPointMatrix_time.GetLength(1);
@@ -119,7 +169,7 @@ namespace Galini_C_
 
 
             // read burning points at the specific time
-            
+
             for (int i = 0; i < width_fire; i++)
             {
                 for (int j = 0; j < length_fire; j++)
@@ -130,17 +180,6 @@ namespace Galini_C_
                         smokeTemp[i, j] = 200;
                         exitVelocity[i, j] = 10;
                     }
-                        /*switch (burningPointMatrix[i, j])
-                    {
-                        case 1:
-                            smokeTemp[i, j] = 200;
-                            exitVelocity[i, j] = 10;
-                            break;
-                        case 2:
-                            smokeTemp[i, j] = 100;
-                            exitVelocity[i, j] = 5;
-                            break;
-                    }*/
                 }
             }
 
@@ -162,24 +201,8 @@ namespace Galini_C_
             string filePath = "/output.csv";
             WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
             WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
-        }
-        public static void WriteMatrixToCSV(double[,] matrix, string filePath)
-        {
-            using (StreamWriter writer = new StreamWriter(filePath))
-            {
-                int rows = matrix.GetLength(0);
-                int cols = matrix.GetLength(1);
-
-                for (int x = 0; x < cols; x++)
-                {
-                    string[] row = new string[cols];
-                    for (int y = 0; y < rows; y++)
-                    {
-                        row[y] = matrix[x, y].ToString();
-                    }
-                    writer.WriteLine(string.Join(",", row));
-                }
+            
             }
-        }
+        
     }
 }
