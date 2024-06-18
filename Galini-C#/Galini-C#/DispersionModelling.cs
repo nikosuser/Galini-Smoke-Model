@@ -19,7 +19,14 @@ namespace Galini_C_
         public double[] GetDispersionCoefficients(string dayOrNight, string surfaceRoughness, string insolation, string nightOvercast, string stabilityMode, double windVelocityDirectionVariation, double windVelocity)
         {
             //Method that determine atmospheric stability class under different weather conditons and find corresponding values used to dispersion coefficients y and z
-            //7 Inputs are string dayOrNight ("day", "night"), string surfaceRoughness ("rural", "urban"), string insolation ("strong", "moderate", "slight"), string nightOvercast ("majority","minority"), string stabilityMode ("optimistic", "pessimistic"), double windVelocityDirectionVariation, double windVelocity(m/s)
+            //7 Inputs:
+            //string dayOrNight ("day", "night"),
+            //string surfaceRoughness ("rural", "urban"),
+            //string insolation ("strong", "moderate", "slight"),
+            //string nightOvercast ("majority","minority"),
+            //string stabilityMode ("optimistic", "pessimistic"),
+            //double windVelocityDirectionVariation,
+            //double windVelocity(m/s)
             //Return a 1*7 double array, 0:3 are values to calculate dispersion coefficient y, 3:6 are values to calculate dispersion coeffienct z, the last value is P
 
             char atmoStabilityClassByDirection = 'O';
@@ -257,7 +264,8 @@ namespace Galini_C_
         private static double Erf(double x)
         {
             // Method to calculate Erf(x)
-            // 1 Input double x
+            // 1 Input:
+            // double x
             // Return double Erf(x)
 
             // constants
@@ -284,7 +292,10 @@ namespace Galini_C_
         public static double[] GetCoordsAboutWindAxis(double[] burningPoint, double[] targetPoint, double windAngle)
         {
             // Method that get target point dimensions in relation to the burning point and the wind direction, so can use its coordinates directly in smoke plume
-            // 3 Inputs are 1*2 double array (x, y) of burning point, 1*2 double array (x, y) of target point, double wind angle in degree
+            // 3 Inputs:
+            // 1*2 double array (x, y) of burning point,
+            // 1*2 double array (x, y) of target point,
+            // double wind angle in degree
             // Return a 1*2 double array (x, y) of target point relative to burning point and wind angle in smoke plume's coordinate system
 
             // rotate the point ...
@@ -372,7 +383,13 @@ namespace Galini_C_
 
         public double TopDownRaster(double[]XYplume, double cellsize, double[] dispCoeff, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
         {   //  Method that calculate top-down smoke concentration at one target point due to one burning/smoldering point
-            // 6 Inputs are a 1*2 double array (x, y) of target point in smoke plume coordinate system, double cell size in meter, a 1*7 double array values for dispersion coefficients, double emission mass flow rate, double wind velocity, double injection height
+            // 6 Inputs:
+            // a 1*2 double array (x, y) of target point in smoke plume coordinate system,
+            // double cell size in meter,
+            // a 1*7 double array values for dispersion coefficients,
+            // double emission mass flow rate,
+            // double wind velocity,
+            // double injection height
             // Return top-down smoke concentration at one target point due to one burning/smoldering point
 
             double _x = XYplume[0] * cellsize;
@@ -401,8 +418,10 @@ namespace Galini_C_
             //Method that calculates the total top-down smoke concentration for a landscape. 
             //13 Inputs are:
             //a double 2D matrix of burningPoints in fire domain,
-            //double smokeDomainScaleFactor, 1*2 double array of fireDomain dimensions (width, lenght),
-            //double 2d matrix of smoke temperature in fire domain, double 2d matrix of exitVelocity in fire domain, double windVelocity, double WindAngle, 1*7 double array of values to calculate dispersion coeffients, double cellsize, double emissionMassFlowRate, double stackDiameter, double atmospheric pressure, double atmospheric temperature
+            //double smokeDomainScaleFactor,
+            //1*2 double array of fireDomain dimensions (width, lenght),
+            //double 2d matrix of smoke temperature in fire domain,
+            //double 2d matrix of exitVelocity in fire domain, double windVelocity, double WindAngle, 1*7 double array of values to calculate dispersion coeffients, double cellsize, double emissionMassFlowRate, double stackDiameter, double atmospheric pressure, double atmospheric temperature
             //Returns the total top-down smoke concentration in the smoke domain.
 
             double WindAngle_rad = (90-WindAngle) * (Math.PI / 180);
