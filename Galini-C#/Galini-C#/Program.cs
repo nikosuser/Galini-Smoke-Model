@@ -18,7 +18,7 @@ namespace Galini_C_
     internal class Program
     {
         // read asc file
-        private static double[,] GetAscFile(string rootPath, string whichFile, int skipLines = 6)
+        private static double[,] GetAscFile(string rootPath, string whichFile, int skipLines)
         {
             string filePath = Path.Combine(rootPath, whichFile);
 
