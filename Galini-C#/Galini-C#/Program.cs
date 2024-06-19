@@ -102,6 +102,7 @@ namespace Galini_C_
             }
         }
 
+
         public static void Main(string[] args)
         {
             //----------------------------INPUT VARIABLES--------------------------------------
@@ -109,9 +110,11 @@ namespace Galini_C_
             double windVelocity = 20;               // initialize wind magnitude (km/h)
             double WindAngle = 180;                  //initialize wind angle (wind vector starting from the vertical downwards, anticlockwise)
             double atmosphericTemp = 300;                 //initialize Ambient temperature (K)
-            double cellsize = 30;                   //size of each landscape point (m)
+            double cellsize_Fire = 30;                   //size of each landscape point (m)
+            double cellsize_Smoke = 50;
+
             double emissionMassFlowRate = 2000;     //emission species mass flow rate (m3/s)    (??)
-            double stackDiameter = cellsize;        //effective smoke stack diameter
+            double stackDiameter = cellsize_Fire;        //effective smoke stack diameter
             double atmosphericP = 1;                //ambient pressure (bar)
             
 
@@ -155,39 +158,67 @@ namespace Galini_C_
                 }
             }
 
+            //
+            var DispersionModelling = new DispersionModelling();
 
             int width_fire = burningPointMatrix_time.GetLength(0);
             int length_fire = burningPointMatrix_time.GetLength(1);
 
-            double[,] burningPointMatrix = new double[width_fire, length_fire];       //coordinates of points on fire (about fire domain)
+            double width_smoke = scaleFactor * width_fire * cellsize_Fire / cellsize_Smoke;
+            double length_smoke = scaleFactor * length_fire * cellsize_Fire / cellsize_Smoke;
+            double[,] burningPointMatrix_smoke_time = new double[(int)width_smoke, (int)length_smoke];
+            double[,] burningPointMatrix_smoke = new double[(int)width_smoke, (int)length_smoke];
+
+            double[] XburningPoint_fireToSmokeDomian_inMeter = new double[width_fire];
+            double[] YburningPoint_fireToSmokeDomian_inMeter = new double[length_fire];
 
 
-            double[] fireDomainDims = [width_fire, length_fire];     //Total fire domain size 
-
-            double[,] smokeTemp = new double[width_fire, length_fire];                 //Smoke exit temperature (C) 
-            double[,] exitVelocity = new double[width_fire, length_fire];               //Smoke upwards velocity (m/s)          (??)
-
-
-            // read burning points at the specific time
-
-            for (int i = 0; i < width_fire; i++)
+            for (int i = 0; i < width_smoke; i++)
             {
-                for (int j = 0; j < length_fire; j++)
+                double x = i * cellsize_Smoke;
+
+                for (int j = 0; j < length_smoke; j++)
                 {
-                    if ( burningPointMatrix_time[i, j] <= time && burningPointMatrix_time[i, j] >= (time - burning_period))
+                    double y = j * cellsize_Smoke;
+
+                    for (int a = 0; a < (width_fire - 1); a++)
                     {
-                        burningPointMatrix[i, j] = 1;
-                        smokeTemp[i, j] = 200;
-                        exitVelocity[i, j] = 10;
+                        XburningPoint_fireToSmokeDomian_inMeter[a] = (scaleFactor * width_fire  / 2 - (width_fire / 2 - a)) * cellsize_Fire;
+                        double x1 = XburningPoint_fireToSmokeDomian_inMeter[a];
+                        double x2 = XburningPoint_fireToSmokeDomian_inMeter[a + 1];
+
+                        for (int b = 0; b < (length_fire - 1); b++)
+                        {
+                            YburningPoint_fireToSmokeDomian_inMeter[b] = (scaleFactor * length_fire / 2 - (length_fire / 2 - b)) * cellsize_Fire;
+                            double y1 = XburningPoint_fireToSmokeDomian_inMeter[b];
+                            double y2 = XburningPoint_fireToSmokeDomian_inMeter[b + 1];
+
+                            double Q11 = burningPointMatrix_time[a, b];
+                            double Q12 = burningPointMatrix_time[a, b + 1];
+                            double Q21 = burningPointMatrix_time[a + 1, b];
+                            double Q22 = burningPointMatrix_time[a + 1, b + 1];
+
+                            if (x >= x1 && x <= x2
+                                && y >= y1 && y <= y2)
+                            {
+                                burningPointMatrix_smoke_time[i, j] = DispersionModelling.Interpolate(x, y, x1, y1, x2, y2, Q11, Q12, Q21, Q22);
+
+                                if (burningPointMatrix_time[i, j] <= time && burningPointMatrix_time[i, j] >= (time - burning_period))
+                                {
+                                    burningPointMatrix_smoke[i, j] = 1;
+                                }
+                            }
+                        }
                     }
                 }
             }
-
-
+            WriteMatrixToCSV(burningPointMatrix_smoke, System.IO.Directory.GetCurrentDirectory() + "/burningMatrixSmoke.csv");
+            
 
             //in future: enforce consistent units!
 
             //--------------------------------------------------------------------------------
+            /*
             var DispersionModelling = new DispersionModelling();
 
             Console.WriteLine(DispersionModelling.FindInjectionHeight_Andersen(30, 20, 100000, -6.5, -9.8, 1700, 20));
@@ -195,14 +226,15 @@ namespace Galini_C_
 
 
             double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
-            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
+            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize_Fire, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
             string filePath = "/output.csv";
             WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
             WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
-            
-            }
+            */
+
+        }
         
     }
 }
