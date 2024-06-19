@@ -11,8 +11,6 @@ using System.Text.Json;
 using System.Runtime.InteropServices;
 using System.Globalization;
 using System.IO;
-using System.Xml.Linq;
-using Microsoft.VisualBasic;
 
 
 namespace Galini_C_
@@ -20,7 +18,7 @@ namespace Galini_C_
     internal class Program
     {
         // read asc file
-        private static double[,] GetAscFile(string rootPath, string whichFile, int skipLines)
+        private static double[,] GetAscFile(string rootPath, string whichFile, int skipLines = 6)
         {
             string filePath = Path.Combine(rootPath, whichFile);
 
@@ -82,6 +80,7 @@ namespace Galini_C_
 
             return resultMatrix;
         }
+
         // write csv file
         public static void WriteMatrixToCSV(double[,] matrix, string filePath)
         {
@@ -116,7 +115,6 @@ namespace Galini_C_
             double emissionMassFlowRate = 2000;     //emission species mass flow rate (m3/s)    (??)
             double stackDiameter = cellsize_Fire;        //effective smoke stack diameter
             double atmosphericP = 1;                //ambient pressure (bar)
-            
 
             double time = 60; //mins
             double burning_period = 10;
@@ -124,32 +122,34 @@ namespace Galini_C_
             double scaleFactor = 2;                 //Scale factor between fire domain and smoke domain
 
 
-            // Read the input matrix from the weather.wxs file
-            string filePath1 ="weather.wxs";
+            // read burning point matrix with time
             string rootPath = System.IO.Directory.GetCurrentDirectory();
+            // Read the input matrix from the weather.wxs file
+            string filePath1 = "weather.wxs";
             double[,] Weather_variables = GetAscFile(rootPath, filePath1, 4);
             // read burning point matrix with time
             string whichFile = "arrivalTime.asc";
             double[,] burningPointMatrix_time = GetAscFile(rootPath, whichFile, 6);
+  
 
             // ask for the specific date and time
             double Year = 2024;
             double Month = 5;
             double Day = 30;
             double Hour = 1200;
-           /* Console.WriteLine("Input the year");
-            double Year = Convert.ToDouble(Console.ReadLine());
-            Console.WriteLine("Input the month");
-            double Month = Convert.ToDouble(Console.ReadLine());
-            Console.WriteLine("Input the day");
-            double Day = Convert.ToDouble(Console.ReadLine());
-            Console.WriteLine("Input the hour");
-            double Hour = Convert.ToDouble(Console.ReadLine());*/
+            /* Console.WriteLine("Input the year");
+             double Year = Convert.ToDouble(Console.ReadLine());
+             Console.WriteLine("Input the month");
+             double Month = Convert.ToDouble(Console.ReadLine());
+             Console.WriteLine("Input the day");
+             double Day = Convert.ToDouble(Console.ReadLine());
+             Console.WriteLine("Input the hour");
+             double Hour = Convert.ToDouble(Console.ReadLine());*/
 
-           // read the corresponding variables 
+            // read the corresponding variables 
             for (int i = 0; i < Weather_variables.GetLength(0); i++)
             {
-                if (Weather_variables[i,0] == Year && Weather_variables[i, 1] == Month && Weather_variables[i, 2] == Day && Weather_variables[i, 3] == Hour)
+                if (Weather_variables[i, 0] == Year && Weather_variables[i, 1] == Month && Weather_variables[i, 2] == Day && Weather_variables[i, 3] == Hour)
                 {
                     atmosphericTemp = Weather_variables[i, 4];
                     windVelocity = Weather_variables[i, 7];
@@ -158,83 +158,49 @@ namespace Galini_C_
                 }
             }
 
-            //
-            var DispersionModelling = new DispersionModelling();
-
             int width_fire = burningPointMatrix_time.GetLength(0);
             int length_fire = burningPointMatrix_time.GetLength(1);
+            double[,] burningPointMatrix = new double[width_fire, length_fire];       //coordinates of points on fire (about fire domain)
+            double[,] smokeTemp = new double[width_fire, length_fire];                 //Smoke exit temperature (C) 
+            double[,] exitVelocity = new double[width_fire, length_fire];               //Smoke upwards velocity (m/s) 
+            double[] fireDomainDims = [width_fire, length_fire];     //Total fire domain size 
 
-            double width_smoke = scaleFactor * width_fire * cellsize_Fire / cellsize_Smoke;
-            double length_smoke = scaleFactor * length_fire * cellsize_Fire / cellsize_Smoke;
-            double[,] burningPointMatrix_smoke_time = new double[(int)width_smoke, (int)length_smoke];
-            double[,] burningPointMatrix_smoke = new double[(int)width_smoke, (int)length_smoke];
-
-            double[] XburningPoint_fireToSmokeDomian_inMeter = new double[width_fire];
-            double[] YburningPoint_fireToSmokeDomian_inMeter = new double[length_fire];
-
-
-            for (int i = 0; i < width_smoke; i++)
+            // read burning points at the specific time
+            for (int i = 0; i < width_fire; i++)
             {
-                double x = i * cellsize_Smoke;
-
-                for (int j = 0; j < length_smoke; j++)
+                for (int j = 0; j < length_fire; j++)
                 {
-                    double y = j * cellsize_Smoke;
-
-                    for (int a = 0; a < (width_fire - 1); a++)
+                    if (burningPointMatrix_time[i, j] <= time && burningPointMatrix_time[i, j] >= (time - burning_period))
                     {
-                        XburningPoint_fireToSmokeDomian_inMeter[a] = (scaleFactor * width_fire  / 2 - (width_fire / 2 - a)) * cellsize_Fire;
-                        double x1 = XburningPoint_fireToSmokeDomian_inMeter[a];
-                        double x2 = XburningPoint_fireToSmokeDomian_inMeter[a + 1];
-
-                        for (int b = 0; b < (length_fire - 1); b++)
-                        {
-                            YburningPoint_fireToSmokeDomian_inMeter[b] = (scaleFactor * length_fire / 2 - (length_fire / 2 - b)) * cellsize_Fire;
-                            double y1 = XburningPoint_fireToSmokeDomian_inMeter[b];
-                            double y2 = XburningPoint_fireToSmokeDomian_inMeter[b + 1];
-
-                            double Q11 = burningPointMatrix_time[a, b];
-                            double Q12 = burningPointMatrix_time[a, b + 1];
-                            double Q21 = burningPointMatrix_time[a + 1, b];
-                            double Q22 = burningPointMatrix_time[a + 1, b + 1];
-
-                            if (x >= x1 && x <= x2
-                                && y >= y1 && y <= y2)
-                            {
-                                burningPointMatrix_smoke_time[i, j] = DispersionModelling.Interpolate(x, y, x1, y1, x2, y2, Q11, Q12, Q21, Q22);
-
-                                if (burningPointMatrix_time[i, j] <= time && burningPointMatrix_time[i, j] >= (time - burning_period))
-                                {
-                                    burningPointMatrix_smoke[i, j] = 1;
-                                }
-                            }
-                        }
+                        burningPointMatrix[i, j] = 1;
+                        smokeTemp[i, j] = 200;
+                        exitVelocity[i, j] = 10;
                     }
                 }
             }
-            WriteMatrixToCSV(burningPointMatrix_smoke, System.IO.Directory.GetCurrentDirectory() + "/burningMatrixSmoke.csv");
-            
+                    //in future: enforce consistent units!
 
-            //in future: enforce consistent units!
+                    //--------------------------------------------------------------------------------
 
-            //--------------------------------------------------------------------------------
-            /*
-            var DispersionModelling = new DispersionModelling();
+             var DispersionModelling = new DispersionModelling();
 
             Console.WriteLine(DispersionModelling.FindInjectionHeight_Andersen(30, 20, 100000, -6.5, -9.8, 1700, 20));
 
 
 
             double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
-            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize_Fire, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
+            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize_Fire, cellsize_Smoke, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
             string filePath = "/output.csv";
             WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
             WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
-            */
+            
 
         }
         
+
+       
     }
 }
+
