@@ -413,21 +413,26 @@ namespace Galini_C_
             return termA * dispersionCoefficientZ * (termB - termC);
             }
 
-        public double[,] DispersionModel_topDownConcentration(double[,] burningPoint_fireDomain, double smokeDomainScaleFactor, double[] fireDomainDims, double[,] smokeTemp, double[,] exitVelocity, double windVelocity, double WindAngle, double[] dispCoeff, double cellsize_Fire, double cellsize_Smoke, double emissionMassFlowRate, double stackDiameter, double atmosphericP, double atmosphericTemp)
+        public double[,] DispersionModel_topDownConcentration(double[,] burningPoint_fireDomain, double smokeDomainScaleFactor, double[] fireDomainDims, double windVelocity, double WindAngle, double[] dispCoeff,
+                                                              double cellsize_Fire, double cellsize_Smoke, double emissionMassFlowRate, double stackDiameter, double T_amb, double P_amb, 
+                                                              double environemntalLapseRate, double dryAdiabaticLapseRate, double[,] firelineIntensity, double[,] ROS)
         {
             //Method that calculates the total top-down smoke concentration for a landscape. 
-            //13 Inputs are:
+            //16 Inputs are:
             //a double 2D matrix of burningPoints in fire domain,
             //double smokeDomainScaleFactor,
             //1*2 double array of fireDomain dimensions (width, lenght),
             //double 2d matrix of smoke temperature in fire domain,
             //double 2d matrix of exitVelocity in fire domain,
-            //double windVelocity, double WindAngle,
+            //double windVelocity,
+            //double WindAngle,
             //1*7 double array of values to calculate dispersion coeffients,
-            //double cellsize, double emissionMassFlowRate,
+            //double cellsize,
+            //double emissionMassFlowRate,
             //double stackDiameter,
             //double atmospheric pressure,
-            //double atmospheric temperature
+            //double atmospheric temperature,
+            // double environemntalLapseRate, double dryAdiabaticLapseRate, double[,] firelineIntensity, double[,] ROS
             //Returns the total top-down smoke concentration in the smoke domain.
 
             if (WindAngle == 0)
@@ -443,7 +448,7 @@ namespace Galini_C_
 
             double w = fireDomainDims[0];
             double l = fireDomainDims[1];
-            double[] smokeDomainDims = [smokeDomainScaleFactor * w, smokeDomainScaleFactor * l];
+            double[] smokeDomainDims = [smokeDomainScaleFactor * w * cellsize_Fire / cellsize_Smoke, smokeDomainScaleFactor * l * cellsize_Fire / cellsize_Smoke];
 
             int rows = (int)smokeDomainDims[0];
             int cols = (int)smokeDomainDims[1];
@@ -459,7 +464,7 @@ namespace Galini_C_
                     {
                         Console.WriteLine(i.ToString() + ", " + j.ToString());
 
-                        steadyStateHeight = FindInjectionHeight(smokeTemp[i, j], exitVelocity[i, j], windVelocity, stackDiameter, atmosphericP, atmosphericTemp);
+                        steadyStateHeight = FindInjectionHeight_Andersen(cellsize_Fire, T_amb, P_amb, environemntalLapseRate, dryAdiabaticLapseRate, firelineIntensity[i,j], ROS[i,j]);
 
                         double[] burningPoint_smokeDomain = [(smokeDomainScaleFactor * w / 2 - (w / 2 - i))* cellsize_Fire/ cellsize_Smoke, (smokeDomainScaleFactor * l / 2 - (l / 2 - j)) *cellsize_Fire / cellsize_Smoke];
 
@@ -495,7 +500,7 @@ namespace Galini_C_
 
                                             else
                                             {
-                                                topDownRaster[x, y] += TopDownRaster(XYplume, cellsize_Fire, dispCoeff, emissionMassFlowRate, windVelocity, steadyStateHeight);
+                                                topDownRaster[x, y] += TopDownRaster(XYplume, cellsize_Smoke, dispCoeff, emissionMassFlowRate, windVelocity, steadyStateHeight);
                                             }
                                         }
                                     }
@@ -523,7 +528,7 @@ namespace Galini_C_
 
                                             else
                                             {
-                                                topDownRaster[x, y] += TopDownRaster(XYplume, cellsize_Fire, dispCoeff, emissionMassFlowRate, windVelocity, steadyStateHeight);
+                                                topDownRaster[x, y] += TopDownRaster(XYplume, cellsize_Smoke, dispCoeff, emissionMassFlowRate, windVelocity, steadyStateHeight);
                                             }
                                         }
                                     }

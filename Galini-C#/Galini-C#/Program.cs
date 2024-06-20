@@ -109,28 +109,36 @@ namespace Galini_C_
             double windVelocity = 20;               // initialize wind magnitude (km/h)
             double WindAngle = 180;                  //initialize wind angle (wind vector starting from the vertical downwards, anticlockwise)
             double atmosphericTemp = 300;                 //initialize Ambient temperature (K)
-            double cellsize_Fire = 30;                   //size of each landscape point (m)
-            double cellsize_Smoke = 50;
+
+            double cellsize_Fire = 30;                   //size of each fire landscape point (m)
+            double cellsize_Smoke = 45;                 //size of each smoke landscape point (m)
 
             double emissionMassFlowRate = 2000;     //emission species mass flow rate (m3/s)    (??)
             double stackDiameter = cellsize_Fire;        //effective smoke stack diameter
-            double atmosphericP = 1;                //ambient pressure (bar)
+            double atmosphericP = 10000;                //ambient pressure (Pascals)
 
             double time = 60; //mins
             double burning_period = 10;
 
             double scaleFactor = 2;                 //Scale factor between fire domain and smoke domain
 
+            double environemntalLapseRate = -6.5;
+            double dryAdiabaticLapseRate = -9.8;
 
             // read burning point matrix with time
             string rootPath = System.IO.Directory.GetCurrentDirectory();
-            // Read the input matrix from the weather.wxs file
+            // Read the input variables matrix from the weather.wxs file
             string filePath1 = "weather.wxs";
             double[,] Weather_variables = GetAscFile(rootPath, filePath1, 4);
-            // read burning point matrix with time
-            string whichFile = "arrivalTime.asc";
-            double[,] burningPointMatrix_time = GetAscFile(rootPath, whichFile, 6);
-  
+            // read burning point matrix in fire domain with time
+            string filePath2 = "arrivalTime.asc";
+            double[,] burningPointMatrix_time = GetAscFile(rootPath, filePath2, 6);
+            // read rate of spread in fire domain
+            string filePath3 = "rateofspread.asc";
+            double[,] ROS = GetAscFile(rootPath, filePath3, 6);
+            // read firelineIntensity in fire domain
+            string filePath4 = "firelineintensity.asc";
+            double[,] firelineIntensity = GetAscFile(rootPath, filePath4, 6);
 
             // ask for the specific date and time
             double Year = 2024;
@@ -160,21 +168,22 @@ namespace Galini_C_
 
             int width_fire = burningPointMatrix_time.GetLength(0);
             int length_fire = burningPointMatrix_time.GetLength(1);
+            double[] fireDomainDims = [width_fire, length_fire];                        //Total fire domain size 
             double[,] burningPointMatrix = new double[width_fire, length_fire];       //coordinates of points on fire (about fire domain)
-            double[,] smokeTemp = new double[width_fire, length_fire];                 //Smoke exit temperature (C) 
-            double[,] exitVelocity = new double[width_fire, length_fire];               //Smoke upwards velocity (m/s) 
-            double[] fireDomainDims = [width_fire, length_fire];     //Total fire domain size 
+            /*double[,] smokeTemp = new double[width_fire, length_fire];                 //Smoke exit temperature (C) 
+            double[,] exitVelocity = new double[width_fire, length_fire];*/               //Smoke upwards velocity (m/s) 
+
 
             // read burning points at the specific time
             for (int i = 0; i < width_fire; i++)
             {
                 for (int j = 0; j < length_fire; j++)
-                {
+                {   
                     if (burningPointMatrix_time[i, j] <= time && burningPointMatrix_time[i, j] >= (time - burning_period))
                     {
                         burningPointMatrix[i, j] = 1;
-                        smokeTemp[i, j] = 200;
-                        exitVelocity[i, j] = 10;
+                        /*smokeTemp[i, j] = 200;
+                        exitVelocity[i, j] = 10;*/
                     }
                 }
             }
@@ -184,12 +193,13 @@ namespace Galini_C_
 
              var DispersionModelling = new DispersionModelling();
 
-            Console.WriteLine(DispersionModelling.FindInjectionHeight_Andersen(30, 20, 100000, -6.5, -9.8, 1700, 20));
+            //Console.WriteLine(DispersionModelling.FindInjectionHeight_Andersen(30, 20, 100000, -6.5, -9.8, 1700, 20));
 
 
 
             double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
-            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, smokeTemp, exitVelocity, windVelocity, WindAngle, dispCoeffOut, cellsize_Fire, cellsize_Smoke, emissionMassFlowRate, stackDiameter, atmosphericP, atmosphericTemp);
+            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, windVelocity, WindAngle, dispCoeffOut, 
+                                                                                                cellsize_Fire, cellsize_Smoke, emissionMassFlowRate, stackDiameter, atmosphericTemp, atmosphericP, environemntalLapseRate, dryAdiabaticLapseRate, firelineIntensity, ROS);
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
             string filePath = "/output.csv";
