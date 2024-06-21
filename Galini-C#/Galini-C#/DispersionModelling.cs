@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Reflection.Metadata;
 using Microsoft.VisualBasic;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 
 namespace Galini_C_
 {
@@ -413,42 +414,45 @@ namespace Galini_C_
             return termA * dispersionCoefficientZ * (termB - termC);
             }
 
-        public double[,] DispersionModel_topDownConcentration(double[,] burningPoint_fireDomain, double smokeDomainScaleFactor, double[] fireDomainDims, double windVelocity, double WindAngle, double[] dispCoeff,
-                                                              double cellsize_Fire, double cellsize_Smoke, double emissionMassFlowRate, double stackDiameter, double T_amb, double P_amb, 
-                                                              double environemntalLapseRate, double dryAdiabaticLapseRate, double[,] firelineIntensity, double[,] ROS)
+        public double[,] DispersionModel_topDownConcentration(Dictionary<string, double> config,
+                                                                double[,] burningPoint_fireDomain,
+                                                                double[,] firelineIntensity,
+                                                                double[,] ROS,
+                                                                double[,] flamingEmissionsFlowrate,
+                                                                double[,] smolderingEmissionsFlowrate,
+                                                                double[] fireDomainDims, 
+                                                                double[] dispCoeff                                                                 
+                                                                )
         {
             //Method that calculates the total top-down smoke concentration for a landscape. 
-            //16 Inputs are:
-            //a double 2D matrix of burningPoints in fire domain,
-            //double smokeDomainScaleFactor,
-            //1*2 double array of fireDomain dimensions (width, lenght),
-            //double 2d matrix of smoke temperature in fire domain,
-            //double 2d matrix of exitVelocity in fire domain,
-            //double windVelocity,
-            //double WindAngle,
-            //1*7 double array of values to calculate dispersion coeffients,
-            //double cellsize,
-            //double emissionMassFlowRate,
-            //double stackDiameter,
-            //double atmospheric pressure,
-            //double atmospheric temperature,
-            // double environemntalLapseRate, double dryAdiabaticLapseRate, double[,] firelineIntensity, double[,] ROS
+
             //Returns the total top-down smoke concentration in the smoke domain.
 
-            if (WindAngle == 0)
+            double windAngle = config["windAngle"];
+            double windVelocity = config["windVelocity"];
+            double scaleFactor = config["scaleFactor"];
+            double cellsize_Fire = config["cellsize_fire"];
+            double cellsize_Smoke = config["cellsize_smoke"];
+            double T_amb = config["atmosphericTemp"];
+            double P_amb = config["atmosphericPressure"];
+            double environmentalLapseRate = config["environmentalLapseRate"];
+            double dryAdiabaticLapseRate = config["dryAdiabaticLapseRate"];
+
+
+            if (windAngle == 0)
             {
-                WindAngle = 0.00001;
+                windAngle = 0.01;
             }
-            if (WindAngle == 180)
+            if (windAngle == 180)
             {
-                WindAngle = 180 + 0.00001;
+                windAngle = 180 + 0.01;
             }
-            double WindAngle_rad = (90 - WindAngle) * (Math.PI / 180);
+            double WindAngle_rad = (90 - windAngle) * (Math.PI / 180);
             double steadyStateHeight;
 
             double w = fireDomainDims[0];
             double l = fireDomainDims[1];
-            double[] smokeDomainDims = [smokeDomainScaleFactor * w * cellsize_Fire / cellsize_Smoke, smokeDomainScaleFactor * l * cellsize_Fire / cellsize_Smoke];
+            double[] smokeDomainDims = [scaleFactor * w * cellsize_Fire / cellsize_Smoke, scaleFactor * l * cellsize_Fire / cellsize_Smoke];
 
             int rows = (int)smokeDomainDims[0];
             int cols = (int)smokeDomainDims[1];
@@ -464,9 +468,9 @@ namespace Galini_C_
                     {
                         Console.WriteLine(i.ToString() + ", " + j.ToString());
 
-                        steadyStateHeight = FindInjectionHeight_Andersen(cellsize_Fire, T_amb, P_amb, environemntalLapseRate, dryAdiabaticLapseRate, firelineIntensity[i,j], ROS[i,j]);
+                        steadyStateHeight = FindInjectionHeight_Andersen(cellsize_Fire, T_amb, P_amb, environmentalLapseRate, dryAdiabaticLapseRate, firelineIntensity[i,j], ROS[i,j]);
 
-                        double[] burningPoint_smokeDomain = [(smokeDomainScaleFactor * w / 2 - (w / 2 - i))* cellsize_Fire/ cellsize_Smoke, (smokeDomainScaleFactor * l / 2 - (l / 2 - j)) *cellsize_Fire / cellsize_Smoke];
+                        double[] burningPoint_smokeDomain = [(scaleFactor * w / 2 - (w / 2 - i))* cellsize_Fire/ cellsize_Smoke, (scaleFactor * l / 2 - (l / 2 - j)) *cellsize_Fire / cellsize_Smoke];
 
                         // define a boundary line y = kx + b, where no smoke spread to the side opposing wind direction
                         double k = Math.Tan(WindAngle_rad);
@@ -476,20 +480,17 @@ namespace Galini_C_
                         {
                             case 1: // burning
 
-                                if (WindAngle >= 90 && WindAngle <= 270) // wind pointing upwards, in y direction, smoke spreads from boundary line to top of domain (y = cols)
+                                if (windAngle >= 90 && windAngle <= 270) // wind pointing upwards, in y direction, smoke spreads from boundary line to top of domain (y = cols)
                                 {
                                     for (int x = 0; x < rows; x++)
                                     {
                                         int Ybound = (int)(k * x + b); // boundary line in terms of y, changing with x
                                         // for certain x, Ybound becomes negative, out of smoke domain, reset to zero
-                                        if (Ybound < 0)
-                                        {
-                                            Ybound = 0;
-                                        }
+                                        if (Ybound < 0) { Ybound = 0; }
 
                                         for (int y = Ybound; y < cols; y++)
                                         {
-                                            double[] XYplume = GetCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], WindAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
+                                            double[] XYplume = GetCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], windAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
 
                                             //when the target point is the burning point
                                             //XYplume is zero, the zero occurs in the denominator of TopDownRaster function, TopDownRaster function died, so just add 0 instead of running the function.
@@ -500,7 +501,7 @@ namespace Galini_C_
 
                                             else
                                             {
-                                                topDownRaster[x, y] += TopDownRaster(XYplume, cellsize_Smoke, dispCoeff, emissionMassFlowRate, windVelocity, steadyStateHeight);
+                                                topDownRaster[x, y] += TopDownRaster(XYplume, cellsize_Smoke, dispCoeff, flamingEmissionsFlowrate[i,j], windVelocity, steadyStateHeight);
                                             }
                                         }
                                     }
@@ -518,17 +519,15 @@ namespace Galini_C_
 
                                         for (int y = 0; y < Ybound; y++)
                                         {
-                                            double[] XYplume = GetCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], WindAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
-
+                                            double[] XYplume = GetCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], windAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
                                             //when the target point is burning point, same as above
-                                            if (burningPoint_smokeDomain[0] == Convert.ToDouble(x) && burningPoint_smokeDomain[1] == Convert.ToDouble(y))
+                                            if (burningPoint_smokeDomain[0] == (double)x && burningPoint_smokeDomain[1] == (double)y)
                                             {
                                                 topDownRaster[x, y] += 0;
                                             }
-
                                             else
                                             {
-                                                topDownRaster[x, y] += TopDownRaster(XYplume, cellsize_Smoke, dispCoeff, emissionMassFlowRate, windVelocity, steadyStateHeight);
+                                                topDownRaster[x, y] += TopDownRaster(XYplume, cellsize_Smoke, dispCoeff, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
                                             }
                                         }
                                     }
@@ -543,17 +542,17 @@ namespace Galini_C_
                                     {
 
 
-                                        if (WindAngle < 180 && x > (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))   //check if target point is "behind" the plume when the wind vector is pointing to the left
+                                        if (windAngle < 180 && x > (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))   //check if target point is "behind" the plume when the wind vector is pointing to the left
                                         {
                                             topDownRaster[x, y] += 0;
                                         }
-                                        else if (WindAngle >= 180 && x < (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))    //as above but if the wind is pointing to the right
+                                        else if (windAngle >= 180 && x < (burningPoint_smokeDomain[0] - (burningPoint_smokeDomain[1] - y) / Math.Tan(WindAngle_rad)))    //as above but if the wind is pointing to the right
                                         {
                                             topDownRaster[x, y] += 0;
                                         }
                                         else
                                         {
-                                            double[] XYplume = GetCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], WindAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
+                                            double[] XYplume = GetCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], windAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
 
                                             double _x = XYplume[0] * cellsize_Fire;
                                             double _y = XYplume[1] * cellsize_Fire;      //convert to meters
@@ -561,7 +560,7 @@ namespace Galini_C_
                                             double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
                                             double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
 
-                                            double termA = (Math.PI / 2) * (emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
+                                            double termA = (Math.PI / 2) * (smolderingEmissionsFlowrate[i,j] / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
                                                            Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
 
                                             double zMax = 300000;

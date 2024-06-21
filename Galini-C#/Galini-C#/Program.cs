@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
-using System.Text.Json;
-using System.Runtime.InteropServices;
+﻿
 using System.Globalization;
 using System.IO;
 
@@ -17,7 +7,6 @@ namespace Galini_C_
 {
     internal class Program
     {
-        // read asc file
         private static double[,] GetAscFile(string rootPath, string whichFile, int skipLines)
         {
             string filePath = Path.Combine(rootPath, whichFile);
@@ -81,7 +70,6 @@ namespace Galini_C_
             return resultMatrix;
         }
 
-        // write csv file
         public static void WriteMatrixToCSV(double[,] matrix, string filePath)
         {
             using (StreamWriter writer = new StreamWriter(filePath))
@@ -101,116 +89,114 @@ namespace Galini_C_
             }
         }
 
-
         public static void Main(string[] args)
         {
             //----------------------------INPUT VARIABLES--------------------------------------
 
-            double windVelocity = 20;               // initialize wind magnitude (km/h)
-            double WindAngle = 180;                  //initialize wind angle (wind vector starting from the vertical downwards, anticlockwise)
-            double atmosphericTemp = 300;                 //initialize Ambient temperature (K)
+            DateTime smokeTime = new DateTime(2024, 5, 30, 14, 00, 00);
 
-            double cellsize_Fire = 30;                   //size of each fire landscape point (m)
-            double cellsize_Smoke = 45;                 //size of each smoke landscape point (m)
+            string weatherFile = "weather.wxs";
+            string arrivalTimeFile = "arrivalTime.asc";
+            string rateOfSpreadFile = "rateofspread.asc";
+            string firelineIntensityFile = "firelineintensity.asc";
 
-            double emissionMassFlowRate = 2000;     //emission species mass flow rate (m3/s)    (??)
-            double stackDiameter = cellsize_Fire;        //effective smoke stack diameter
-            double atmosphericP = 10000;                //ambient pressure (Pascals)
+            Dictionary<string, double> config = new Dictionary<string, double>()
+            {
+                {"windVelocity", -1 },
+                {"windAngle", -1 },
+                {"atmosphericTemp", -1 },
+                {"atmosphericPressure", 100000 },
+                {"cellsize_fire", 30 },
+                {"cellsize_smoke", 45 },
+                {"scaleFactor", 3 },
+                {"environmentalLapseRate", -6.5 },
+                {"dryAdiabaticLapseRate", -9.8 }
+            };
 
-            double time = 60; //mins
-            double burning_period = 10;
+            double burning_period = 10;             //turn to matrix
 
-            double scaleFactor = 2;                 //Scale factor between fire domain and smoke domain
+            string rootPath = Directory.GetCurrentDirectory();
 
-            double environemntalLapseRate = -6.5;
-            double dryAdiabaticLapseRate = -9.8;
+            double[,] weatherInput = GetAscFile(rootPath, weatherFile, 4);
+            double[,] arrivalTime = GetAscFile(rootPath, arrivalTimeFile, 6);
+            double[,] ROS = GetAscFile(rootPath, rateOfSpreadFile, 6);
+            double[,] firelineIntensity = GetAscFile(rootPath, firelineIntensityFile, 6);
 
-            // read burning point matrix with time
-            string rootPath = System.IO.Directory.GetCurrentDirectory();
-            // Read the input variables matrix from the weather.wxs file
-            string filePath1 = "weather.wxs";
-            double[,] Weather_variables = GetAscFile(rootPath, filePath1, 4);
-            // read burning point matrix in fire domain with time
-            string filePath2 = "arrivalTime.asc";
-            double[,] burningPointMatrix_time = GetAscFile(rootPath, filePath2, 6);
-            // read rate of spread in fire domain
-            string filePath3 = "rateofspread.asc";
-            double[,] ROS = GetAscFile(rootPath, filePath3, 6);
-            // read firelineIntensity in fire domain
-            string filePath4 = "firelineintensity.asc";
-            double[,] firelineIntensity = GetAscFile(rootPath, filePath4, 6);
-
-            // ask for the specific date and time
-            double Year = 2024;
-            double Month = 5;
-            double Day = 30;
-            double Hour = 1200;
-            /* Console.WriteLine("Input the year");
-             double Year = Convert.ToDouble(Console.ReadLine());
-             Console.WriteLine("Input the month");
-             double Month = Convert.ToDouble(Console.ReadLine());
-             Console.WriteLine("Input the day");
-             double Day = Convert.ToDouble(Console.ReadLine());
-             Console.WriteLine("Input the hour");
-             double Hour = Convert.ToDouble(Console.ReadLine());*/
+            double[] fireDomainDims = [arrivalTime.GetLength(0), arrivalTime.GetLength(1)];                        //Total fire domain size 
+            double[,] burningPointMatrix = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];       //coordinates of points on fire (about fire domain)
+            double[,] flamingTime = burningPointMatrix;
+            double[,] smolderingTime = burningPointMatrix;
+            double[,] flamingEmissions = burningPointMatrix;
+            double[,] smolderingEmissions = burningPointMatrix;
+            double[,] flamingEmissionsFlowrate = burningPointMatrix;
+            double[,] smolderingEmissionsFlowrate = burningPointMatrix;
 
             // read the corresponding variables 
-            for (int i = 0; i < Weather_variables.GetLength(0); i++)
+            DateTime fireStartTime = new DateTime();
+
+            for (int i = 0; i < weatherInput.GetLength(0); i++)
             {
-                if (Weather_variables[i, 0] == Year && Weather_variables[i, 1] == Month && Weather_variables[i, 2] == Day && Weather_variables[i, 3] == Hour)
+                DateTime inputRowTime = new DateTime((int)weatherInput[i, 0], (int)weatherInput[i, 1], (int)weatherInput[i, 2], (int)(weatherInput[i, 3] / 100), (int)(weatherInput[i, 3] % 100), 0);
+
+                if (i == 0)
                 {
-                    atmosphericTemp = Weather_variables[i, 4];
-                    windVelocity = Weather_variables[i, 7];
-                    WindAngle = Weather_variables[i, 8];
+                    fireStartTime = inputRowTime;
+                }
+                if (Math.Abs((int)(smokeTime - inputRowTime).TotalMinutes)<50)
+                {
+                    config["atmosphericTemp"] = weatherInput[i, 4];
+                    config["windVelocity"] = weatherInput[i, 7];
+                    config["WindAngle"] = weatherInput[i, 8];
                     break;
                 }
             }
 
-            int width_fire = burningPointMatrix_time.GetLength(0);
-            int length_fire = burningPointMatrix_time.GetLength(1);
-            double[] fireDomainDims = [width_fire, length_fire];                        //Total fire domain size 
-            double[,] burningPointMatrix = new double[width_fire, length_fire];       //coordinates of points on fire (about fire domain)
-            /*double[,] smokeTemp = new double[width_fire, length_fire];                 //Smoke exit temperature (C) 
-            double[,] exitVelocity = new double[width_fire, length_fire];*/               //Smoke upwards velocity (m/s) 
-
-
-            // read burning points at the specific time
-            for (int i = 0; i < width_fire; i++)
+            double targetArrivalTime = (smokeTime - fireStartTime).TotalMinutes;
+            for (int i = 0; i < fireDomainDims[0]; i++)
             {
-                for (int j = 0; j < length_fire; j++)
-                {   
-                    if (burningPointMatrix_time[i, j] <= time && burningPointMatrix_time[i, j] >= (time - burning_period))
+                for (int j = 0; j < fireDomainDims[1]; j++)
+                {
+                    flamingTime[i,j] = 10;
+                    smolderingTime[i,j] = 180;
+                    flamingEmissions[i, j] = 2000;
+                    smolderingEmissions[i, j] = 8000;
+                    if (arrivalTime[i, j] <= targetArrivalTime && arrivalTime[i, j] >= (targetArrivalTime - burning_period))
                     {
                         burningPointMatrix[i, j] = 1;
-                        /*smokeTemp[i, j] = 200;
-                        exitVelocity[i, j] = 10;*/
+                    }
+                    else { burningPointMatrix[i, j] = 0; }
+                    if (flamingTime[i, j] != 0)
+                    {
+                        flamingEmissionsFlowrate[i, j] = flamingEmissions[i, j] / flamingTime[i, j];
+                    }
+                    if (smolderingTime[i, j] != 0)
+                    {
+                        smolderingEmissionsFlowrate[i, j] = smolderingEmissions[i, j] / smolderingTime[i, j];
                     }
                 }
             }
-                    //in future: enforce consistent units!
 
-                    //--------------------------------------------------------------------------------
+            WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
 
-             var DispersionModelling = new DispersionModelling();
+            DispersionModelling galini = new DispersionModelling();
 
-            //Console.WriteLine(DispersionModelling.FindInjectionHeight_Andersen(30, 20, 100000, -6.5, -9.8, 1700, 20));
-
-
-
-            double[] dispCoeffOut = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
-            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(burningPointMatrix, scaleFactor, fireDomainDims, windVelocity, WindAngle, dispCoeffOut, 
-                                                                                                cellsize_Fire, cellsize_Smoke, emissionMassFlowRate, stackDiameter, atmosphericTemp, atmosphericP, environemntalLapseRate, dryAdiabaticLapseRate, firelineIntensity, ROS);
+            double[] dispCoeffs = galini.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
+            double[,] topDownRaster = galini.DispersionModel_topDownConcentration(config,
+                                                                burningPointMatrix,
+                                                                firelineIntensity,
+                                                                ROS,
+                                                                flamingEmissionsFlowrate,
+                                                                smolderingEmissionsFlowrate,
+                                                                fireDomainDims,
+                                                                dispCoeffs);
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
             string filePath = "/output.csv";
-            WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
+            
             WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
             
 
         }
-        
-
-       
     }
 }
 
