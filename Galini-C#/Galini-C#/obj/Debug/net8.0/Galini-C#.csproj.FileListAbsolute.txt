@@ -58,3 +58,5 @@ C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debu
 C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.pdb
 C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.genruntimeconfig.cache
 C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\ref\Galini-C#.dll
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\NuGet\77BDF362D61852A0AF9CAD75D57D7D6541BD10A1\GDAL\3.8.5\GdalConfiguration.cs
+C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.csproj.AssemblyReference.cache

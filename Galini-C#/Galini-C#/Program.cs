@@ -1,4 +1,7 @@
 ﻿
+using OSGeo.GDAL;
+using OSGeo.OSR;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 
@@ -89,6 +92,80 @@ namespace Galini_C_
             }
         }
 
+        private static void CreateGeoTIFF(string outputFile, double[,] data, double[] geotransform, string epsgCode)
+        {
+            Gdal.AllRegister();
+
+            int ySize = data.GetLength(0);
+            int xSize = data.GetLength(1);
+            int bandCount = 1; // Number of bands, change as needed
+
+            Driver driver = Gdal.GetDriverByName("GTiff");
+            Dataset outputDataset = driver.Create(outputFile, xSize, ySize, bandCount, DataType.GDT_Float32, null);
+
+            outputDataset.SetGeoTransform(geotransform);
+
+            SpatialReference srs = new SpatialReference("");
+            srs.ImportFromEPSG(int.Parse(epsgCode.Split(':')[1])); // Extract the EPSG code number
+            string wkt;
+            srs.ExportToWkt(out wkt);
+            outputDataset.SetProjection(wkt);
+
+            Band band = outputDataset.GetRasterBand(1);
+            float[] buffer = new float[xSize * ySize];
+            Buffer.BlockCopy(data, 0, buffer, 0, buffer.Length * sizeof(float));
+            band.WriteRaster(0, 0, xSize, ySize, buffer, xSize, ySize, 0, 0);
+
+            band.FlushCache();
+            outputDataset.FlushCache();
+            outputDataset.Dispose();
+            driver.Dispose();
+        }
+
+        private static void AppendLinesToFile(string filePath, string[] lines)
+        {
+            using (StreamWriter writer = new StreamWriter(filePath, true))
+            {
+                foreach (var line in lines)
+                {
+                    writer.WriteLine(line);
+                }
+            }
+        }
+
+        private static void ExecuteCommand(string command)
+        {
+            ProcessStartInfo processStartInfo = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = "/c " + command,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (Process process = new Process { StartInfo = processStartInfo })
+            {
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                Console.WriteLine("Standard Output:");
+                Console.WriteLine(output);
+
+                if (!string.IsNullOrEmpty(error))
+                {
+                    Console.WriteLine("Standard Error:");
+                    Console.WriteLine(error);
+                }
+
+                Console.WriteLine($"Process exited with code: {process.ExitCode}");
+            }
+        }
+
+
         public static void Main(string[] args)
         {
             //----------------------------INPUT VARIABLES--------------------------------------
@@ -122,7 +199,9 @@ namespace Galini_C_
             double[,] arrivalTime = GetAscFile(rootPath, arrivalTimeFile, 6);
             double[,] ROS = GetAscFile(rootPath, rateOfSpreadFile, 6);
             double[,] firelineIntensity = GetAscFile(rootPath, firelineIntensityFile, 6);
+            double[,] fuelMoisture = GetAscFile(rootPath, fuelSBFile, 0);
             double[,] fuel_SB = GetAscFile(rootPath, fuelSBFile, 6);
+            
 
             double[] fireDomainDims = [arrivalTime.GetLength(0), arrivalTime.GetLength(1)];                        //Total fire domain size 
             double[,] burningPointMatrix = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];       //coordinates of points on fire (about fire domain)
@@ -178,11 +257,64 @@ namespace Galini_C_
                 }
             }
 
-            WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
+            //WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
+
+
+
 
             DispersionModelling galini = new DispersionModelling();
 
             double[,] fuel_FCCS = galini.SBtoFCCS(fuel_SB);
+
+
+
+            string simulationPath = System.IO.Directory.GetCurrentDirectory(); 
+            string outputFile = Path.Combine(simulationPath, "FCCS_GALINI.tif");
+            string epsgCode = "EPSG:26986";
+            string fofemInputFileLoc = "C:\\Users\\sx1022\\OneDrive - Imperial College London\\Documents\\FB\\TestSpatialFOFEM\\SampleData/FOFEM_GALINI.txt";
+
+          
+            // Example geodata
+            double[] geodata = new double[] { 0, 1, 0, 0, 0, -1 }; // Replace with actual geotransform values
+
+            // 1. Write GeoTIFF file
+            CreateGeoTIFF(outputFile, fuel_FCCS, geodata, epsgCode);
+            Console.WriteLine("FOFEM FCCS Fuel Map Saved!");
+
+            // 2. Delete existing input file if it exists
+            if (File.Exists(fofemInputFileLoc))
+            {
+                File.Delete(fofemInputFileLoc);
+            }
+
+            // 3. Write lines to the FOFEM input file
+            AppendLinesToFile(fofemInputFileLoc, new string[]
+            {
+            $"FCCS_Layer_File: {outputFile}",
+            "FCCS_Layer_Number: 1",
+            "FOFEM_Percent_Foliage_Branch_Consumed: 75.0",
+            "FOFEM_Region: I",
+            "FOFEM_Season: Summer",
+            $"FOFEM_10_Hour_FM: {fuelMoisture[1,3]}",
+            $"FOFEM_1000_Hour_FM: {fuelMoisture[1,7]}",
+            $"FOFEM_Duff_FM: {fuelMoisture[1,5]}",
+            "FOFEM_FLAMING_PM25: ",
+            "FOFEM_FLAMING_PM10: ",
+            "FOFEM_SMOLDERING_PM25: ",
+            "FOFEM_SMOLDERING_PM10: "
+            });
+
+            Console.WriteLine("FOFEM Input File Saved, Starting FOFEM!");
+
+            // 4. Execute FOFEM command
+            string commandFOFEM = @"C:\Users\nikos\Downloads\FB\FB\bin\TestSpatialFOFEM C:\Users\sx1022\OneDrive - Imperial College London\Documents\FB\TestSpatialFOFEM\SampleData\FOFEM_GALINI.txt C:\Users\sx1022\OneDrive - Imperial College London\Documents\FB\TestSpatialFOFEM\SampleData\OutputGALINI\";
+            ExecuteCommand(commandFOFEM);
+
+            Console.WriteLine("FOFEM Complete");
+
+
+
+
             double[] dispCoeffs = galini.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
             double[,] topDownRaster = galini.DispersionModel_topDownConcentration(config,
                                                                 burningPointMatrix,

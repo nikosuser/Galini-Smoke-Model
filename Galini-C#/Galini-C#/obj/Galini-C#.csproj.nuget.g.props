@@ -12,4 +12,7 @@
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <SourceRoot Include="C:\Users\sx1022\.nuget\packages\" />
   </ItemGroup>
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <PkgGDAL Condition=" '$(PkgGDAL)' == '' ">C:\Users\sx1022\.nuget\packages\gdal\3.8.5</PkgGDAL>
+  </PropertyGroup>
 </Project>

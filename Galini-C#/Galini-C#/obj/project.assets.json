@@ -1,11 +1,65 @@
 {
   "version": 3,
   "targets": {
-    "net8.0": {}
+    "net8.0": {
+      "GDAL/3.8.5": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/gdal_csharp.dll": {},
+          "lib/netstandard2.0/gdalconst_csharp.dll": {},
+          "lib/netstandard2.0/ogr_csharp.dll": {},
+          "lib/netstandard2.0/osr_csharp.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/gdal_csharp.dll": {},
+          "lib/netstandard2.0/gdalconst_csharp.dll": {},
+          "lib/netstandard2.0/ogr_csharp.dll": {},
+          "lib/netstandard2.0/osr_csharp.dll": {}
+        },
+        "contentFiles": {
+          "contentFiles/cs/any/GdalConfiguration.cs.pp": {
+            "buildAction": "Compile",
+            "codeLanguage": "cs",
+            "copyToOutput": false,
+            "ppOutputPath": "GdalConfiguration.cs"
+          },
+          "contentFiles/vb/any/GdalConfiguration.vb.pp": {
+            "buildAction": "Compile",
+            "codeLanguage": "vb",
+            "copyToOutput": false,
+            "ppOutputPath": "GdalConfiguration.vb"
+          }
+        }
+      }
+    }
   },
-  "libraries": {},
+  "libraries": {
+    "GDAL/3.8.5": {
+      "sha512": "SyzdWppfexD7+ZR/XVgtTuBKPyOIfJ5caiw3NYDkSBppi7uHgQiJz0QYd0AaKkP5N0ZPvGS/Bw9Q28EMXneOFQ==",
+      "type": "package",
+      "path": "gdal/3.8.5",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "content/GdalConfiguration.cs.pp",
+        "content/GdalConfiguration.vb.pp",
+        "contentFiles/cs/any/GdalConfiguration.cs.pp",
+        "contentFiles/vb/any/GdalConfiguration.vb.pp",
+        "gdal.3.8.5.nupkg.sha512",
+        "gdal.nuspec",
+        "lib/netstandard2.0/gdal_csharp.dll",
+        "lib/netstandard2.0/gdalconst_csharp.dll",
+        "lib/netstandard2.0/ogr_csharp.dll",
+        "lib/netstandard2.0/osr_csharp.dll",
+        "tools/install.ps1"
+      ]
+    }
+  },
   "projectFileDependencyGroups": {
-    "net8.0": []
+    "net8.0": [
+      "GDAL >= 3.8.5"
+    ]
   },
   "packageFolders": {
     "C:\\Users\\sx1022\\.nuget\\packages\\": {}
@@ -50,6 +104,12 @@
     "frameworks": {
       "net8.0": {
         "targetAlias": "net8.0",
+        "dependencies": {
+          "GDAL": {
+            "target": "Package",
+            "version": "[3.8.5, )"
+          }
+        },
         "imports": [
           "net461",
           "net462",

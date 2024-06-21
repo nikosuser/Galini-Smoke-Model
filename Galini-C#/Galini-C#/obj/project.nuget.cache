@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "OOq7bPLFG88=",
+  "dgSpecHash": "3kxPbMGY/z4=",
   "success": true,
   "projectFilePath": "C:\\Users\\sx1022\\OneDrive - Imperial College London\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\sx1022\\.nuget\\packages\\gdal\\3.8.5\\gdal.3.8.5.nupkg.sha512"
+  ],
   "logs": []
 }
