@@ -290,6 +290,89 @@ namespace Galini_C_
             return sign * y;
         }
 
+        public double[,] SBtoFCCS(double[,] fuel_SB)
+        {
+            // Method that convert SB to FCCS
+            // 1 Input:
+            // fuel.asc (vegetaton exists in landscae in format Scott and Burgan
+            // Return vegetation in format FCCS
+
+            double[,] SBtoFCCSarray = new double[,]
+            {
+            { 0, 0 },
+            { 91, 0 },
+            { 92, 0 },
+            { 93, 1244 },
+            { 98, 0 },
+            { 99, 0 },
+            { 100, 49 },
+            { 101, 519 },
+            { 102, 66 },
+            { 103, 66 },
+            { 104, 131 },
+            { 105, 131 },
+            { 106, 66 },
+            { 107, 318 },
+            { 108, 175 },
+            { 120, 401 },
+            { 121, 56 },
+            { 122, 308 },
+            { 123, 560112 },
+            { 124, 445 },
+            { 140, 49 },
+            { 141, 69 },
+            { 142, 52 },
+            { 143, 36 },
+            { 144, 69 },
+            { 145, 210 },
+            { 146, 470 },
+            { 147, 154 },
+            { 148, 1470313 },
+            { 149, 154 },
+            { 160, 10 },
+            { 161, 224 },
+            { 162, 156 },
+            { 163, 156 },
+            { 164, 59 },
+            { 165, 2 },
+            { 180, 49 },
+            { 181, 154 },
+            { 182, 283 },
+            { 183, 110 },
+            { 184, 305 },
+            { 185, 364 },
+            { 186, 154 },
+            { 187, 228 },
+            { 188, 90 },
+            { 189, 467 },
+            { 200, 1090412 },
+            { 201, 48 },
+            { 202, 1100422 },
+            { 203, 4550432 },
+            { -9999, -9999 }
+            };
+
+            int w = fuel_SB.GetLength(0);
+            int l = fuel_SB.GetLength(1);
+            double[,] fuel_FCCS = new double[w, l];
+
+            for (int i = 0; i < w; i++)
+            {
+                for (int j = 0; j < l; j++)
+                {
+                    for (int k = 0; k < SBtoFCCSarray.GetLength(0); k++)
+                    {
+                        if (fuel_SB[i, j] == SBtoFCCSarray[k, 0])
+                        {
+                            fuel_FCCS[i, j] = SBtoFCCSarray[k, 1];
+                        }
+                    }
+                }
+            }
+
+            return fuel_FCCS;
+        }
+
         public static double[] GetCoordsAboutWindAxis(double[] burningPoint, double[] targetPoint, double windAngle)
         {
             // Method that get target point dimensions in relation to the burning point and the wind direction, so can use its coordinates directly in smoke plume
@@ -473,7 +556,7 @@ namespace Galini_C_
                         double[] burningPoint_smokeDomain = [(scaleFactor * w / 2 - (w / 2 - i))* cellsize_Fire/ cellsize_Smoke, (scaleFactor * l / 2 - (l / 2 - j)) *cellsize_Fire / cellsize_Smoke];
 
                         // define a boundary line y = kx + b, where no smoke spread to the side opposing wind direction
-                        double k = Math.Tan(WindAngle_rad);
+                        double k = -Math.Tan(WindAngle_rad);
                         double b = burningPoint_smokeDomain[1] - burningPoint_smokeDomain[0] * k;
 
                         switch (burningPoint_fireDomain[i, j])
@@ -494,7 +577,7 @@ namespace Galini_C_
 
                                             //when the target point is the burning point
                                             //XYplume is zero, the zero occurs in the denominator of TopDownRaster function, TopDownRaster function died, so just add 0 instead of running the function.
-                                            if (burningPoint_smokeDomain[0] == Convert.ToDouble(x) && burningPoint_smokeDomain[1] == Convert.ToDouble(y))
+                                            if (XYplume[0] == 0 && XYplume[1] == 0)
                                             {
                                                 topDownRaster[x, y] += 0;
                                             }

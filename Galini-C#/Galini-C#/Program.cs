@@ -93,12 +93,13 @@ namespace Galini_C_
         {
             //----------------------------INPUT VARIABLES--------------------------------------
 
-            DateTime smokeTime = new DateTime(2024, 5, 30, 14, 00, 00);
+            DateTime smokeTime = new DateTime(2024, 5, 30, 13, 00, 00);
 
             string weatherFile = "weather.wxs";
             string arrivalTimeFile = "arrivalTime.asc";
             string rateOfSpreadFile = "rateofspread.asc";
             string firelineIntensityFile = "firelineintensity.asc";
+            string fuelSBFile = "fuel.asc";
 
             Dictionary<string, double> config = new Dictionary<string, double>()
             {
@@ -108,7 +109,7 @@ namespace Galini_C_
                 {"atmosphericPressure", 100000 },
                 {"cellsize_fire", 30 },
                 {"cellsize_smoke", 45 },
-                {"scaleFactor", 3 },
+                {"scaleFactor", 2 },
                 {"environmentalLapseRate", -6.5 },
                 {"dryAdiabaticLapseRate", -9.8 }
             };
@@ -121,6 +122,7 @@ namespace Galini_C_
             double[,] arrivalTime = GetAscFile(rootPath, arrivalTimeFile, 6);
             double[,] ROS = GetAscFile(rootPath, rateOfSpreadFile, 6);
             double[,] firelineIntensity = GetAscFile(rootPath, firelineIntensityFile, 6);
+            double[,] fuel_SB = GetAscFile(rootPath, fuelSBFile, 6);
 
             double[] fireDomainDims = [arrivalTime.GetLength(0), arrivalTime.GetLength(1)];                        //Total fire domain size 
             double[,] burningPointMatrix = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];       //coordinates of points on fire (about fire domain)
@@ -142,7 +144,7 @@ namespace Galini_C_
                 {
                     fireStartTime = inputRowTime;
                 }
-                if (Math.Abs((int)(smokeTime - inputRowTime).TotalMinutes)<50)
+                if (Math.Abs((int)(smokeTime - inputRowTime).TotalMinutes)<30)
                 {
                     config["atmosphericTemp"] = weatherInput[i, 4];
                     config["windVelocity"] = weatherInput[i, 7];
@@ -180,6 +182,7 @@ namespace Galini_C_
 
             DispersionModelling galini = new DispersionModelling();
 
+            double[,] fuel_FCCS = galini.SBtoFCCS(fuel_SB);
             double[] dispCoeffs = galini.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
             double[,] topDownRaster = galini.DispersionModel_topDownConcentration(config,
                                                                 burningPointMatrix,
@@ -191,9 +194,9 @@ namespace Galini_C_
                                                                 dispCoeffs);
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
-            string filePath = "/output.csv";
-            
-            WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + filePath);
+            WriteMatrixToCSV(fuel_FCCS, System.IO.Directory.GetCurrentDirectory() + "/fuel_FCCS.csv");
+
+            WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() +  "/output.csv");
             
 
         }
