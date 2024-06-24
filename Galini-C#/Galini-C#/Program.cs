@@ -91,37 +91,7 @@ namespace Galini_C_
                 }
             }
         }
-
-        private static void CreateGeoTIFF(string outputFile, double[,] data, double[] geotransform, string epsgCode)
-        {
-            Gdal.AllRegister();
-
-            int ySize = data.GetLength(0);
-            int xSize = data.GetLength(1);
-            int bandCount = 1; // Number of bands, change as needed
-
-            Driver driver = Gdal.GetDriverByName("GTiff");
-            Dataset outputDataset = driver.Create(outputFile, xSize, ySize, bandCount, DataType.GDT_Float32, null);
-
-            outputDataset.SetGeoTransform(geotransform);
-
-            SpatialReference srs = new SpatialReference("");
-            srs.ImportFromEPSG(int.Parse(epsgCode.Split(':')[1])); // Extract the EPSG code number
-            string wkt;
-            srs.ExportToWkt(out wkt);
-            outputDataset.SetProjection(wkt);
-
-            Band band = outputDataset.GetRasterBand(1);
-            float[] buffer = new float[xSize * ySize];
-            Buffer.BlockCopy(data, 0, buffer, 0, buffer.Length * sizeof(float));
-            band.WriteRaster(0, 0, xSize, ySize, buffer, xSize, ySize, 0, 0);
-
-            band.FlushCache();
-            outputDataset.FlushCache();
-            outputDataset.Dispose();
-            driver.Dispose();
-        }
-
+        
         private static void AppendLinesToFile(string filePath, string[] lines)
         {
             using (StreamWriter writer = new StreamWriter(filePath, true))
@@ -266,31 +236,66 @@ namespace Galini_C_
 
             double[,] fuel_FCCS = galini.SBtoFCCS(fuel_SB);
 
+            string simulationPath = System.IO.Directory.GetCurrentDirectory();
+
+            string inputFilePath = simulationPath + "/rateofspread.asc";
+            string outputFilePath = simulationPath + "/FCCS_GALINI.tif";
+            string fofemInputFileLoc = simulationPath + "/FOFEM_GALINI.txt";
+
+            // Register GDAL
+            Gdal.AllRegister();
+
+            // Open the ASC file
+            Dataset ascDataset = Gdal.Open(inputFilePath, Access.GA_ReadOnly);
+            if (ascDataset == null)
+            {
+                Console.WriteLine("Failed to open ASC file.");
+                return;
+            }
+
+            // Read geodata from the ASC file
+            double[] geoTransform = new double[6];
+            ascDataset.GetGeoTransform(geoTransform);
+
+            // Define the target coordinate system (EPSG:26986)
+            SpatialReference targetSRS = new SpatialReference("");
+            targetSRS.ImportFromEPSG(26986);
+
+            // Create a new GeoTIFF file
+            Driver driver = Gdal.GetDriverByName("GTiff");
+
+            int width = ascDataset.RasterXSize;
+            int height = ascDataset.RasterYSize;
+            Dataset tifDataset = driver.Create(outputFilePath, width, height, 1, DataType.GDT_Float32, null);
+            tifDataset.SetGeoTransform(geoTransform);
 
 
-            string simulationPath = System.IO.Directory.GetCurrentDirectory(); 
-            string outputFile = Path.Combine(simulationPath, "FCCS_GALINI.tif");
-            string epsgCode = "EPSG:26986";
-            string fofemInputFileLoc = "C:\\Users\\sx1022\\OneDrive - Imperial College London\\Documents\\FB\\TestSpatialFOFEM\\SampleData/FOFEM_GALINI.txt";
+            // Flatten the 2D matrix to a 1D array
+            double[] fuelsFOFEM = new double[width * height];
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    fuelsFOFEM[i * width + j] = fuel_FCCS[i, j];
+                }
+            }
+            // Write the matrix data to the GeoTIFF file
+            Band tifBand = tifDataset.GetRasterBand(1);
+            tifBand.WriteRaster(0, 0, width, height, fuelsFOFEM, width, height, 0, 0);
+            tifBand.FlushCache();
 
-          
-            // Example geodata
-            double[] geodata = new double[] { 0, 1, 0, 0, 0, -1 }; // Replace with actual geotransform values
+            Console.WriteLine("GeoTIFF file has been written to " + outputFilePath);
 
-            // 1. Write GeoTIFF file
-            CreateGeoTIFF(outputFile, fuel_FCCS, geodata, epsgCode);
-            Console.WriteLine("FOFEM FCCS Fuel Map Saved!");
-
-            // 2. Delete existing input file if it exists
+            // Delete existing input file if it exists
             if (File.Exists(fofemInputFileLoc))
             {
                 File.Delete(fofemInputFileLoc);
             }
 
-            // 3. Write lines to the FOFEM input file
+            // Writelines to the FOFEM input file
             AppendLinesToFile(fofemInputFileLoc, new string[]
             {
-            $"FCCS_Layer_File: {outputFile}",
+            $"FCCS_Layer_File: {outputFilePath}",
             "FCCS_Layer_Number: 1",
             "FOFEM_Percent_Foliage_Branch_Consumed: 75.0",
             "FOFEM_Region: I",
@@ -306,11 +311,14 @@ namespace Galini_C_
 
             Console.WriteLine("FOFEM Input File Saved, Starting FOFEM!");
 
-            // 4. Execute FOFEM command
-            string commandFOFEM = @"C:\Users\nikos\Downloads\FB\FB\bin\TestSpatialFOFEM C:\Users\sx1022\OneDrive - Imperial College London\Documents\FB\TestSpatialFOFEM\SampleData\FOFEM_GALINI.txt C:\Users\sx1022\OneDrive - Imperial College London\Documents\FB\TestSpatialFOFEM\SampleData\OutputGALINI\";
+            // Execute FOFEM command
+            string externalProgram = simulationPath + "/TestSpatialFOFEM/SampleData/RunSpatialFOFEM.bat";
+            string outputFolder = simulationPath + "/OutputGALINI/";
+            string commandFOFEM = $"\"{externalProgram}\" \"{fofemInputFileLoc}\" \"{outputFolder}\"";
             ExecuteCommand(commandFOFEM);
 
             Console.WriteLine("FOFEM Complete");
+
 
 
 
@@ -325,8 +333,6 @@ namespace Galini_C_
                                                                 fireDomainDims,
                                                                 dispCoeffs);
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
-
-            WriteMatrixToCSV(fuel_FCCS, System.IO.Directory.GetCurrentDirectory() + "/fuel_FCCS.csv");
 
             WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() +  "/output.csv");
             

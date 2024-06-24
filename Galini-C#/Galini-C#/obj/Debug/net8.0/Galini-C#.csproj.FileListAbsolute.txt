@@ -60,3 +60,10 @@ C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debu
 C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\ref\Galini-C#.dll
 C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\NuGet\77BDF362D61852A0AF9CAD75D57D7D6541BD10A1\GDAL\3.8.5\GdalConfiguration.cs
 C:\Users\sx1022\OneDrive - Imperial College London\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.csproj.AssemblyReference.cache
+C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\gdal_csharp.dll
+C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\gdalconst_csharp.dll
+C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\ogr_csharp.dll
+C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\osr_csharp.dll
+C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\NuGet\59888C99C9A2A166C39E9059B82138C88BA77936\GDAL\3.8.5\GdalConfiguration.cs
+C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.csproj.AssemblyReference.cache
+C:\Users\Lenovo\Documents\GitHub\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.csproj.Up2Date
