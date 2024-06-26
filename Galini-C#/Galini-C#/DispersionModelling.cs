@@ -20,7 +20,7 @@ namespace Galini_C_
 {
     public class DispersionModelling
     {
-        public double[] GetDispersionCoefficients(string dayOrNight, string surfaceRoughness, string insolation, string nightOvercast, string stabilityMode, double windVelocityDirectionVariation, double windVelocity)
+        public static double[] GetDispersionCoefficients(string dayOrNight, string surfaceRoughness, string insolation, string nightOvercast, string stabilityMode, double windVelocityDirectionVariation, double windVelocity)
         {
             //Method that determine atmospheric stability class under different weather conditons and find corresponding values used to dispersion coefficients y and z
             //7 Inputs:
@@ -293,7 +293,7 @@ namespace Galini_C_
             return sign * y;
         }
 
-        public double[,] SBtoFCCS(double[,] fuel_SB)
+        public static double[,] SBtoFCCS(double[,] fuel_SB)
         {
             // Method that convert SB to FCCS
             // 1 Input:
@@ -405,7 +405,7 @@ namespace Galini_C_
 
         }
 
-        private double FindInjectionHeight(double smokeTemp, double exitVelocity, double windVelocity, double stackDiameter, double atmosphericP, double atmosphericTemp)
+        private static double FindInjectionHeight(double smokeTemp, double exitVelocity, double windVelocity, double stackDiameter, double atmosphericP, double atmosphericTemp)
         {
             // Method that calculate injection height
             // 6 Inputs are double smoke temperature, double exit velocity, double wind velocity, double stack diameter, double atmospheic pressure, double atmospheric temperature
@@ -420,7 +420,7 @@ namespace Galini_C_
             return steadyStateHeight;
         }
 
-        public double FindInjectionHeight_Andersen(double cellsize, double T_amb, double P_amb, double environemntalLapseRate, double dryAdiabaticLapseRate, double firelineIntensity, double ROS)
+        public static double FindInjectionHeight_Andersen(double cellsize, double T_amb, double P_amb, double environemntalLapseRate, double dryAdiabaticLapseRate, double firelineIntensity, double ROS)
         {
             T_amb = T_amb + 273;                                            //C to K
             environemntalLapseRate = environemntalLapseRate / 1000;         //C/km to C/m
@@ -460,7 +460,7 @@ namespace Galini_C_
             return newGuess;
         }
 
-        private double AndersenRequiredEnergy(double injectionHeight, double cellsize, double T_amb, double P_amb, double environemntalLapseRate, double dryAdiabaticLapseRate, double firelineIntensity, double ROS)
+        private static double AndersenRequiredEnergy(double injectionHeight, double cellsize, double T_amb, double P_amb, double environemntalLapseRate, double dryAdiabaticLapseRate, double firelineIntensity, double ROS)
         {
             return 0.5 * P_amb * cellsize * cellsize * injectionHeight * 
                 Math.Log(1 + (injectionHeight * (environemntalLapseRate - dryAdiabaticLapseRate)) / T_amb) * 
@@ -468,7 +468,7 @@ namespace Galini_C_
             
         }
 
-        public double TopDownRaster(double[]XYplume, double cellsize, double[] dispCoeff, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
+        public static double TopDownRaster(double[]XYplume, double cellsize, double[] dispCoeff, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
         {   //  Method that calculate top-down smoke concentration at one target point due to one burning/smoldering point
             // 6 Inputs:
             // a 1*2 double array (x, y) of target point in smoke plume coordinate system,
@@ -485,7 +485,7 @@ namespace Galini_C_
             double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
             double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
 
-            double termA = (Math.PI / 2) * (emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
+            double termA = Math.Sqrt(Math.PI / 2) * (emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
                             Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
 
             double zMax = 300000;
@@ -500,7 +500,7 @@ namespace Galini_C_
             return termA * dispersionCoefficientZ * (termB - termC);
             }
 
-        public double[,] DispersionModel_topDownConcentration(Dictionary<string, double> config,
+        public static double[,] DispersionModel_topDownConcentration(Dictionary<string, double> config,
                                                                 double[,] burningPoint_fireDomain,
                                                                 double[,] firelineIntensity,
                                                                 double[,] ROS,
@@ -672,7 +672,7 @@ namespace Galini_C_
         }
 
         // driverLevelDensity
-         public double[,] dispersionModel_driverLevel(double[] burningPoint_fireDomain, double smokeDomainScaleFactor, double[] fireDomainDims, double smokeTemp, double exitVelocity, double windVelocity, double WindAngle, double[] dispCoeff, double cellsize, double emissionMassFlowRate, double stackDiameter, double atmosphericP, double atmosphericTemp)
+         public static double[,] dispersionModel_driverLevel(double[] burningPoint_fireDomain, double smokeDomainScaleFactor, double[] fireDomainDims, double smokeTemp, double exitVelocity, double windVelocity, double WindAngle, double[] dispCoeff, double cellsize, double emissionMassFlowRate, double stackDiameter, double atmosphericP, double atmosphericTemp)
         {
             double steadyStateHeight = FindInjectionHeight(smokeTemp, exitVelocity, windVelocity, stackDiameter, atmosphericP, atmosphericTemp);
 

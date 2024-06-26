@@ -1,24 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Lenovo\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj": {}
+    "D:\\OneDrive - Imperial College London\\Imperial\\PhD\\RACEWILDFIRE\\2Dsmoke\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Lenovo\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj": {
+    "D:\\OneDrive - Imperial College London\\Imperial\\PhD\\RACEWILDFIRE\\2Dsmoke\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Lenovo\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
+        "projectUniqueName": "D:\\OneDrive - Imperial College London\\Imperial\\PhD\\RACEWILDFIRE\\2Dsmoke\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
         "projectName": "Galini-C#",
-        "projectPath": "C:\\Users\\Lenovo\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
-        "packagesPath": "C:\\Users\\Lenovo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Lenovo\\Documents\\GitHub\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\obj\\",
+        "projectPath": "D:\\OneDrive - Imperial College London\\Imperial\\PhD\\RACEWILDFIRE\\2Dsmoke\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\Galini-C#.csproj",
+        "packagesPath": "C:\\Users\\nikos\\.nuget\\packages\\",
+        "outputPath": "D:\\OneDrive - Imperial College London\\Imperial\\PhD\\RACEWILDFIRE\\2Dsmoke\\Galini-Smoke-Model\\Galini-C#\\Galini-C#\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "E:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\Lenovo\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\nikos\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -26,7 +22,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {

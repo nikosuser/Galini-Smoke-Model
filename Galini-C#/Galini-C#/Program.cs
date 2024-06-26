@@ -10,143 +10,18 @@ namespace Galini_C_
 {
     internal class Program
     {
-        private static double[,] GetAscFile(string rootPath, string whichFile, int skipLines)
-        {
-            string filePath = Path.Combine(rootPath, whichFile);
-
-            if (!File.Exists(filePath))
-            {
-                throw new FileNotFoundException($"The file {filePath} does not exist.");
-            }
-
-            List<double[]> matrix = new List<double[]>();
-
-            try
-            {
-                Console.WriteLine("Trying to load file: " + whichFile);
-                using (StreamReader reader = new StreamReader(filePath))
-                {
-                    for (int i = 0; i < skipLines; i++) // Skip header lines
-                    {
-                        reader.ReadLine();
-                    }
-
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        // Split the line into elements and convert them to doubles
-                        string[] elements = line.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                        double[] row = Array.ConvertAll(elements, s => double.Parse(s, CultureInfo.InvariantCulture));
-                        matrix.Add(row);
-                    }
-                }
-            }
-            catch (FileNotFoundException)
-            {
-                Console.WriteLine($"Error: File '{filePath}' not found.");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Error: An unexpected error occurred - {e.Message}");
-            }
-
-            Console.WriteLine("Done loading file: " + whichFile);
-
-            // Convert the list of rows to a 2D array
-            if (matrix.Count == 0)
-            {
-                return new double[0, 0];
-            }
-
-            int rowCount = matrix.Count;
-            int colCount = matrix[0].Length;
-            double[,] resultMatrix = new double[rowCount, colCount];
-
-            for (int i = 0; i < rowCount; i++)
-            {
-                for (int j = 0; j < colCount; j++)
-                {
-                    resultMatrix[i, j] = matrix[i][j];
-                }
-            }
-
-            return resultMatrix;
-        }
-
-        public static void WriteMatrixToCSV(double[,] matrix, string filePath)
-        {
-            using (StreamWriter writer = new StreamWriter(filePath))
-            {
-                int rows = matrix.GetLength(0);
-                int cols = matrix.GetLength(1);
-
-                for (int x = 0; x < cols; x++)
-                {
-                    string[] row = new string[cols];
-                    for (int y = 0; y < rows; y++)
-                    {
-                        row[y] = matrix[x, y].ToString();
-                    }
-                    writer.WriteLine(string.Join(",", row));
-                }
-            }
-        }
-        
-        private static void AppendLinesToFile(string filePath, string[] lines)
-        {
-            using (StreamWriter writer = new StreamWriter(filePath, true))
-            {
-                foreach (var line in lines)
-                {
-                    writer.WriteLine(line);
-                }
-            }
-        }
-
-        private static void ExecuteCommand(string command)
-        {
-            ProcessStartInfo processStartInfo = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = "/c " + command,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using (Process process = new Process { StartInfo = processStartInfo })
-            {
-                process.Start();
-                string output = process.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-
-                Console.WriteLine("Standard Output:");
-                Console.WriteLine(output);
-
-                if (!string.IsNullOrEmpty(error))
-                {
-                    Console.WriteLine("Standard Error:");
-                    Console.WriteLine(error);
-                }
-
-                Console.WriteLine($"Process exited with code: {process.ExitCode}");
-            }
-        }
-
-
         public static void Main(string[] args)
         {
             //----------------------------INPUT VARIABLES--------------------------------------
 
             DateTime smokeTime = new DateTime(2024, 5, 30, 13, 00, 00);
 
-            string weatherFile = "weather.wxs";
-            string arrivalTimeFile = "arrivalTime.asc";
-            string rateOfSpreadFile = "rateofspread.asc";
-            string firelineIntensityFile = "firelineintensity.asc";
-            string fuelSBFile = "fuel.asc";
+            string weatherFile = "/weather.wxs";
+            string arrivalTimeFile = "/arrivalTime.asc";
+            string rateOfSpreadFile = "/rateofspread.asc";
+            string firelineIntensityFile = "/firelineintensity.asc";
+            string fuelSBFile = "/fuel.asc";
+            string fuelMoistureFile = "/moisture.fms";
 
             Dictionary<string, double> config = new Dictionary<string, double>()
             {
@@ -165,13 +40,13 @@ namespace Galini_C_
 
             string rootPath = Directory.GetCurrentDirectory();
 
-            double[,] weatherInput = GetAscFile(rootPath, weatherFile, 4);
-            double[,] arrivalTime = GetAscFile(rootPath, arrivalTimeFile, 6);
-            double[,] ROS = GetAscFile(rootPath, rateOfSpreadFile, 6);
-            double[,] firelineIntensity = GetAscFile(rootPath, firelineIntensityFile, 6);
-            double[,] fuelMoisture = GetAscFile(rootPath, fuelSBFile, 0);
-            double[,] fuel_SB = GetAscFile(rootPath, fuelSBFile, 6);
-            
+            double[,] weatherInput = Helpers.GetAscFile(rootPath, weatherFile, 4);
+            double[,] arrivalTime = Helpers.GetAscFile(rootPath, arrivalTimeFile, 6);
+            double[,] ROS = Helpers.GetAscFile(rootPath, rateOfSpreadFile, 6);
+            double[,] firelineIntensity = Helpers.GetAscFile(rootPath, firelineIntensityFile, 6);
+            double[,] fuelMoisture = Helpers.GetAscFile(rootPath, fuelMoistureFile, 0);
+            double[,] fuel_SB = Helpers.GetAscFile(rootPath, fuelSBFile, 6);
+
 
             double[] fireDomainDims = [arrivalTime.GetLength(0), arrivalTime.GetLength(1)];                        //Total fire domain size 
             double[,] burningPointMatrix = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];       //coordinates of points on fire (about fire domain)
@@ -229,102 +104,17 @@ namespace Galini_C_
 
             //WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
 
-
-
-
-            DispersionModelling galini = new DispersionModelling();
-
-            double[,] fuel_FCCS = galini.SBtoFCCS(fuel_SB);
-
             string simulationPath = System.IO.Directory.GetCurrentDirectory();
 
-            string inputFilePath = simulationPath + "/rateofspread.asc";
-            string outputFilePath = simulationPath + "/FCCS_GALINI.tif";
-            string fofemInputFileLoc = simulationPath + "/FOFEM_GALINI.txt";
+            string inputFilePath = "/rateofspread.asc";
+            string outputFilePath = "/fuel_fccs.tif";
+            string fofemInputFileLoc = "/FOFEM.txt";
 
-            // Register GDAL
-            Gdal.AllRegister();
+            FOFEM.runFOFEM(simulationPath, fofemInputFileLoc, outputFilePath, fuelMoisture);
 
-            // Open the ASC file
-            Dataset ascDataset = Gdal.Open(inputFilePath, Access.GA_ReadOnly);
-            if (ascDataset == null)
-            {
-                Console.WriteLine("Failed to open ASC file.");
-                return;
-            }
-
-            // Read geodata from the ASC file
-            double[] geoTransform = new double[6];
-            ascDataset.GetGeoTransform(geoTransform);
-
-            // Define the target coordinate system (EPSG:26986)
-            SpatialReference targetSRS = new SpatialReference("");
-            targetSRS.ImportFromEPSG(26986);
-
-            // Create a new GeoTIFF file
-            Driver driver = Gdal.GetDriverByName("GTiff");
-
-            int width = ascDataset.RasterXSize;
-            int height = ascDataset.RasterYSize;
-            Dataset tifDataset = driver.Create(outputFilePath, width, height, 1, DataType.GDT_Float32, null);
-            tifDataset.SetGeoTransform(geoTransform);
-
-
-            // Flatten the 2D matrix to a 1D array
-            double[] fuelsFOFEM = new double[width * height];
-            for (int i = 0; i < height; i++)
-            {
-                for (int j = 0; j < width; j++)
-                {
-                    fuelsFOFEM[i * width + j] = fuel_FCCS[i, j];
-                }
-            }
-            // Write the matrix data to the GeoTIFF file
-            Band tifBand = tifDataset.GetRasterBand(1);
-            tifBand.WriteRaster(0, 0, width, height, fuelsFOFEM, width, height, 0, 0);
-            tifBand.FlushCache();
-
-            Console.WriteLine("GeoTIFF file has been written to " + outputFilePath);
-
-            // Delete existing input file if it exists
-            if (File.Exists(fofemInputFileLoc))
-            {
-                File.Delete(fofemInputFileLoc);
-            }
-
-            // Writelines to the FOFEM input file
-            AppendLinesToFile(fofemInputFileLoc, new string[]
-            {
-            $"FCCS_Layer_File: {outputFilePath}",
-            "FCCS_Layer_Number: 1",
-            "FOFEM_Percent_Foliage_Branch_Consumed: 75.0",
-            "FOFEM_Region: I",
-            "FOFEM_Season: Summer",
-            $"FOFEM_10_Hour_FM: {fuelMoisture[1,3]}",
-            $"FOFEM_1000_Hour_FM: {fuelMoisture[1,7]}",
-            $"FOFEM_Duff_FM: {fuelMoisture[1,5]}",
-            "FOFEM_FLAMING_PM25: ",
-            "FOFEM_FLAMING_PM10: ",
-            "FOFEM_SMOLDERING_PM25: ",
-            "FOFEM_SMOLDERING_PM10: "
-            });
-
-            Console.WriteLine("FOFEM Input File Saved, Starting FOFEM!");
-
-            // Execute FOFEM command
-            string externalProgram = simulationPath + "/TestSpatialFOFEM/SampleData/RunSpatialFOFEM.bat";
-            string outputFolder = simulationPath + "/OutputGALINI/";
-            string commandFOFEM = $"\"{externalProgram}\" \"{fofemInputFileLoc}\" \"{outputFolder}\"";
-            ExecuteCommand(commandFOFEM);
-
-            Console.WriteLine("FOFEM Complete");
-
-
-
-
-
-            double[] dispCoeffs = galini.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
-            double[,] topDownRaster = galini.DispersionModel_topDownConcentration(config,
+            double[] dispCoeffs = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
+            /*
+             * double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(config,
                                                                 burningPointMatrix,
                                                                 firelineIntensity,
                                                                 ROS,
@@ -332,9 +122,10 @@ namespace Galini_C_
                                                                 smolderingEmissionsFlowrate,
                                                                 fireDomainDims,
                                                                 dispCoeffs);
+            */
             //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
 
-            WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() +  "/output.csv");
+            //Helpers.WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() +  "/output.csv");
             
 
         }
