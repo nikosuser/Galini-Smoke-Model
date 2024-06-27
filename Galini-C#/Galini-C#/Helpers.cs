@@ -10,6 +10,35 @@ namespace Galini_C_
 {
     public class Helpers
     {
+        public static string RunPythonScript(string scriptPath)
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo
+            {
+                FileName = "python", // Use "python3" on some systems, or the full path to the Python interpreter
+                Arguments = scriptPath,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            using (Process process = new Process { StartInfo = startInfo })
+            {
+                process.Start();
+
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (!string.IsNullOrEmpty(error))
+                {
+                    return $"Error: {error}";
+                }
+
+                return output;
+            }
+        }
+
         public double FindMax(double U, double Thr, double Q, double[] dispCoeff, double steadyStateHeight, string XorYorZ)
         {
             double point_current = 0;
