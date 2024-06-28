@@ -20,6 +20,7 @@
   <ItemGroup>
     <PackageReference Include="BigGustave" Version="1.0.6" />
     <PackageReference Include="GDAL" Version="3.8.5" />
+    <PackageReference Include="GDAL.Native" Version="3.8.5" />
     <PackageReference Include="IronPython" Version="3.4.1" />
     <PackageReference Include="Python.Runtime" Version="2.7.9" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.6" />

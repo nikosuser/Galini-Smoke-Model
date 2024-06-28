@@ -1,15 +1,124 @@
-﻿using System;
+﻿using OSGeo.GDAL;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static IronPython.Runtime.Profiler;
 
 namespace Galini_C_
 {
     public class Helpers
     {
+        public static void SaveGeoTIFFfileByCopy(string inputFile, string outputFile, float[,] data)
+        {
+            GdalConfiguration.ConfigureGdal();
+            Gdal.AllRegister();
+            Dataset ds = Gdal.Open(inputFile, Access.GA_ReadOnly);
+            Driver drv = ds.GetDriver();
+
+            Band band0 = ds.GetRasterBand(1);
+            int width = band0.XSize;
+            int height = band0.YSize;
+            int size = width * height;
+            double min = 0.00;
+            double max = 0.00;
+            double mean = 0.00;
+            double stddev = 0.00;
+
+            var stats = band0.GetStatistics(1, 0, out min, out max, out mean, out stddev);
+
+            Driver drv_tiff = Gdal.GetDriverByName("GTiff");
+            string[] options = null;
+            Dataset tiffOutput = drv_tiff.CreateCopy(outputFile, ds, 0, options, null, null);
+            Band outputBand = tiffOutput.GetRasterBand(1);
+
+            float[] linearData = new float[width * height];
+
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
+                {
+                    linearData[i * width + j] = data[i, j];
+                }
+            }
+            outputBand.WriteRaster(0, 0, band0.XSize, band0.YSize, linearData, band0.XSize, band0.YSize, 0, 0);
+
+            tiffOutput.SetProjection(ds.GetProjection());
+
+            Console.WriteLine("Output dataset parameters:");
+            Console.WriteLine("  Projection: " + tiffOutput.GetProjectionRef());
+            Console.WriteLine("  RasterCount: " + tiffOutput.RasterCount);
+            Console.WriteLine("  RasterSize (" + tiffOutput.RasterXSize + "," + tiffOutput.RasterYSize + ")");
+
+            tiffOutput.FlushCache();
+            tiffOutput.Dispose();
+        }
+        public static float[,] ReadGeoTIFFfile(string inputFile)
+        {
+            GdalConfiguration.ConfigureGdal();
+            Gdal.AllRegister();
+
+            /* -------------------------------------------------------------------- */
+            /*      Open dataset.                                                   */
+            /* -------------------------------------------------------------------- */
+            Dataset ds = Gdal.Open(inputFile, Access.GA_ReadOnly);
+
+            if (ds == null)
+            {
+                Console.WriteLine("Can't open fuel file, null Dataset input");
+                System.Environment.Exit(-1);
+            }
+
+            Console.WriteLine("Raster dataset parameters:");
+            Console.WriteLine("  Projection: " + ds.GetProjectionRef());
+            Console.WriteLine("  RasterCount: " + ds.RasterCount);
+            Console.WriteLine("  RasterSize (" + ds.RasterXSize + "," + ds.RasterYSize + ")");
+
+            /* -------------------------------------------------------------------- */
+            /*      Get driver                                                      */
+            /* -------------------------------------------------------------------- */
+            Driver drv = ds.GetDriver();
+
+            if (drv == null)
+            {
+                Console.WriteLine("Can't get driver.");
+                System.Environment.Exit(-1);
+            }
+
+            Console.WriteLine("Using driver " + drv.LongName);
+
+            Band band0 = ds.GetRasterBand(1);
+            int width = band0.XSize;
+            int height = band0.YSize;
+            int size = width * height;
+            double min = 0.00;
+            double max = 0.00;
+            double mean = 0.00;
+            double stddev = 0.00;
+
+            var stats = band0.GetStatistics(1, 0, out min, out max, out mean, out stddev);
+
+            DataType type = band0.DataType;
+
+            float[] data = new float[size];
+            double[,] dataMatrix = new double[width, height];
+            var dataArr = band0.ReadRaster(0, 0, width, height, data, width, height, 0, 0);
+
+            float[,] output = new float[width, height];
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
+                {
+                    output[i, j] = data[i * width + j];
+                }
+            }
+            ds.FlushCache();
+            ds.Dispose();
+            return output;
+        }
         public static string RunPythonScript(string scriptPath)
         {
             ProcessStartInfo startInfo = new ProcessStartInfo

@@ -426,3 +426,4 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+Galini-C\#/Galini-C\#/obj/project.nuget.cache

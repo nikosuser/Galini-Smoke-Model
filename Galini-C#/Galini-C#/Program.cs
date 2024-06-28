@@ -25,6 +25,8 @@ namespace Galini_C_
             string firelineIntensityFile = "/firelineintensity.asc";
             string fuelSBFile = "/fuel.asc";
             string fuelMoistureFile = "/moisture.fms";
+            string fccs_outputFileName = "/fuel_fccs.tif";
+            string fofemInputFileName = "/FOFEM.txt";
 
             Dictionary<string, double> config = new Dictionary<string, double>()
             {
@@ -50,15 +52,27 @@ namespace Galini_C_
             double[,] fuelMoisture = Helpers.GetAscFile(rootPath, fuelMoistureFile, 0);
             double[,] fuel_SB = Helpers.GetAscFile(rootPath, fuelSBFile, 6);
 
+            FOFEM.runFOFEM(rootPath, fofemInputFileName, fccs_outputFileName, fuelMoisture);
 
             double[] fireDomainDims = [arrivalTime.GetLength(0), arrivalTime.GetLength(1)];                        //Total fire domain size 
             double[,] burningPointMatrix = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];       //coordinates of points on fire (about fire domain)
-            double[,] flamingTime = burningPointMatrix;
-            double[,] smolderingTime = burningPointMatrix;
-            double[,] flamingEmissions = burningPointMatrix;
-            double[,] smolderingEmissions = burningPointMatrix;
-            double[,] flamingEmissionsFlowrate = burningPointMatrix;
-            double[,] smolderingEmissionsFlowrate = burningPointMatrix;
+            double[,] flamingTime = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];
+            double[,] smolderingTime = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];  //awaiting for update?
+            float[,] flamingEmissions = Helpers.ReadGeoTIFFfile(rootPath + "/FOFEMoutput/_Flaming PM10.tif");
+            float[,] smolderingEmissions = Helpers.ReadGeoTIFFfile(rootPath + "/FOFEMoutput/_Smoldering PM10.tif");
+            double[,] flamingEmissionsFlowrate = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];
+            double[,] smolderingEmissionsFlowrate = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];
+
+            //outputs are in pounds per acre, so we convert them to grams per square meter
+
+            for (int i=0; i<fireDomainDims[0]; i++)
+            {
+                for (int j = 0; j < fireDomainDims[1]; j++)
+                {
+                    flamingEmissions[i, j] = (float)(0.112085 * flamingEmissions[i, j]);
+                    smolderingEmissions[i, j] = (float)(0.112085 * smolderingEmissions[i, j]);
+                }
+            }
 
             // read the corresponding variables 
             DateTime fireStartTime = new DateTime();
@@ -94,27 +108,16 @@ namespace Galini_C_
                         burningPointMatrix[i, j] = 1;
                     }
                     else { burningPointMatrix[i, j] = 0; }
-                    if (flamingTime[i, j] != 0)
+                    if (flamingTime[i, j] + 1 != 0)
                     {
-                        flamingEmissionsFlowrate[i, j] = flamingEmissions[i, j] / flamingTime[i, j];
+                        flamingEmissionsFlowrate[i, j] = flamingEmissions[i, j] / (1+flamingTime[i, j]);
                     }
-                    if (smolderingTime[i, j] != 0)
+                    if (smolderingTime[i, j] + 1 != 0)
                     {
-                        smolderingEmissionsFlowrate[i, j] = smolderingEmissions[i, j] / smolderingTime[i, j];
+                        smolderingEmissionsFlowrate[i, j] = smolderingEmissions[i, j] / (1+smolderingTime[i, j]);
                     }
                 }
             }
-
-            //WriteMatrixToCSV(burningPointMatrix, System.IO.Directory.GetCurrentDirectory() + "/burningMatrix.csv");
-
-            string simulationPath = System.IO.Directory.GetCurrentDirectory();
-
-            string inputFilePath = "/rateofspread.asc";
-            string outputFilePath = "/fuel_fccs.tif";
-            string fofemInputFileLoc = "/FOFEM.txt";
-
-            FOFEM.runFOFEM(simulationPath, fofemInputFileLoc, outputFilePath, fuelMoisture);
-
             double[] dispCoeffs = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
 
             double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(config,

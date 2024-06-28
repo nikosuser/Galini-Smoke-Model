@@ -97,99 +97,17 @@ namespace Galini_C_
 
             //-----------------------------------------------------------------------------------------------------
 
-            GdalConfiguration.ConfigureGdal();
-            Gdal.AllRegister();
+            float[,] data = Helpers.ReadGeoTIFFfile(inputFile);
 
-            /* -------------------------------------------------------------------- */
-            /*      Open dataset.                                                   */
-            /* -------------------------------------------------------------------- */
-            Dataset ds = Gdal.Open(inputFile, Access.GA_ReadOnly);
-
-            if (ds == null)
+            for (int i = 0; i < data.GetLength(0); i++)
             {
-                Console.WriteLine("Can't open fuel file, null Dataset input");
-                System.Environment.Exit(-1);
-            }
-
-            Console.WriteLine("Raster dataset parameters:");
-            Console.WriteLine("  Projection: " + ds.GetProjectionRef());
-            Console.WriteLine("  RasterCount: " + ds.RasterCount);
-            Console.WriteLine("  RasterSize (" + ds.RasterXSize + "," + ds.RasterYSize + ")");
-
-            /* -------------------------------------------------------------------- */
-            /*      Get driver                                                      */
-            /* -------------------------------------------------------------------- */
-            Driver drv = ds.GetDriver();
-
-            if (drv == null)
-            {
-                Console.WriteLine("Can't get driver.");
-                System.Environment.Exit(-1);
-            }
-
-            Console.WriteLine("Using driver " + drv.LongName);
-
-            /* -------------------------------------------------------------------- */
-            /*      Get raster band                                                 */
-            /* -------------------------------------------------------------------- */
-            for (int iBand = 1; iBand <= ds.RasterCount; iBand++)
-            {
-                Band band = ds.GetRasterBand(iBand);
-                Console.WriteLine("Band " + iBand + " :");
-                Console.WriteLine("   DataType: " + band.DataType);
-                Console.WriteLine("   Size (" + band.XSize + "," + band.YSize + ")");
-                Console.WriteLine("   PaletteInterp: " + band.GetRasterColorInterpretation().ToString());
-
-                for (int iOver = 0; iOver < band.GetOverviewCount(); iOver++)
+                for (int j = 0; j < data.GetLength(1); j++)
                 {
-                    Band over = band.GetOverview(iOver);
-                    Console.WriteLine("      OverView " + iOver + " :");
-                    Console.WriteLine("         DataType: " + over.DataType);
-                    Console.WriteLine("         Size (" + over.XSize + "," + over.YSize + ")");
-                    Console.WriteLine("         PaletteInterp: " + over.GetRasterColorInterpretation().ToString());
-                }
-            }
-            Band band0 = ds.GetRasterBand(0);
-            int width = band0.XSize;
-            int height = band0.YSize;
-            int size = width * height;
-            double min = 0.00;
-            double max = 0.00;
-            double mean = 0.00;
-            double stddev = 0.00;
-
-            var stats = band0.GetStatistics(1, 0, out min, out max, out mean, out stddev);
-
-            //Console.WriteLine($"Statistics retrieved and returned a result of {stats}");
-            Console.WriteLine($"X : {width} Y : {height} SIZE: {size}");
-            Console.WriteLine($"MIN : {min} MAX : {max} MEAN : {mean} STDDEV : {stddev}");
-            DataType type = band0.DataType;
-            Console.WriteLine($"Data Type : {type}");
-
-            float gtMean = 0; //cut
-            float ltMean = 0; //fill
-
-            float[] data = new float[size];
-            double[,] dataMatrix = new double[width,height]; 
-            var dataArr = band0.ReadRaster(0, 0, width, height, data, width, height, 0, 0);
-
-            for (int i = 0; i < width; i++)
-            {
-                for (int j = 0; j < height; j++)
-                {
-                    dataMatrix[i, j] = (double)data[i * width + j];
+                    data[i, j] = (float)DispersionModelling.SBtoFCCS((int)data[i, j]);
                 }
             }
 
-            double[,] fuel_FCCS = DispersionModelling.SBtoFCCS(dataMatrix);
-
-            Driver drv_tiff = Gdal.GetDriverByName("GTiff");
-            string[] options = null;
-            Dataset tiffOutput = drv_tiff.CreateCopy(outputFile, ds, 0, options, null, null);
-            tiffOutput.SetProjection(ds.GetProjection());
-
-            tiffOutput.FlushCache();
-            tiffOutput.Dispose();
+            Helpers.SaveGeoTIFFfileByCopy(inputFile, outputFile, data);
 
         }
 
@@ -204,7 +122,7 @@ namespace Galini_C_
             }
             if (Directory.Exists(simulationPath + "/FOFEMOutput/"))
             {
-                Directory.Delete(simulationPath + "/FOFEMOutput/");
+                Directory.Delete(simulationPath + "/FOFEMOutput/",true);
             }
             Directory.CreateDirectory(simulationPath + "/FOFEMOutput/");
 
@@ -218,7 +136,10 @@ namespace Galini_C_
             {
                 thousandHourMoisture = fuelMoisture[1, 6];
             }
-            string[] FOFEMinputfile = {$"FCCS_Layer_File: "+ fccsFuelfilename.ToString(),
+
+            saveFCCStiff("fuel.asc", simulationPath + fccsFuelfilename);
+
+            string[] FOFEMinputfile = {$"FCCS_Layer_File: "+ fccsFuelfilename,
             "FCCS_Layer_Number: 1",
             "FOFEM_Percent_Foliage_Branch_Consumed: 75.0",
             "FOFEM_Region: I",
@@ -241,7 +162,8 @@ namespace Galini_C_
             // Execute FOFEM command
             string externalProgram = simulationPath + "/bin/TestSpatialFOFEM.exe";
             string outputFolder = simulationPath + "/FOFEMoutput/";
-            string commandFOFEM = $"'{simulationPath}/setEnv.bat' & '{externalProgram}' '{fofemInputFileLoc}' '{outputFolder}'";
+            string commandFOFEM = $"/C \"{simulationPath}/setEnv.bat\" & \"{externalProgram}\" \"{fofemInputFileLoc}\" \"{outputFolder}\"";
+            commandFOFEM = commandFOFEM.Replace("\\", "/");
             Helpers.ExecuteCommand(commandFOFEM);
 
             Console.WriteLine("FOFEM Complete");

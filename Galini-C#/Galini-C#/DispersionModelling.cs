@@ -293,6 +293,71 @@ namespace Galini_C_
             return sign * y;
         }
 
+        public static int SBtoFCCS(int fuel)
+        {
+            // Method that convert SB to FCCS
+            // 1 Input:
+            // fuel.asc (vegetaton exists in landscae in format Scott and Burgan
+            // Return vegetation in format FCCS
+
+            Dictionary<int,int> SBtoFCCSarray = new Dictionary<int, int>()
+            {
+            { 0, 0 },
+            { 91, 0 },
+            { 92, 0 },
+            { 93, 1244 },
+            { 98, 0 },
+            { 99, 0 },
+            { 100, 49 },
+            { 101, 519 },
+            { 102, 66 },
+            { 103, 66 },
+            { 104, 131 },
+            { 105, 131 },
+            { 106, 66 },
+            { 107, 318 },
+            { 108, 175 },
+            { 120, 401 },
+            { 121, 56 },
+            { 122, 308 },
+            { 123, 560112 },
+            { 124, 445 },
+            { 140, 49 },
+            { 141, 69 },
+            { 142, 52 },
+            { 143, 36 },
+            { 144, 69 },
+            { 145, 210 },
+            { 146, 470 },
+            { 147, 154 },
+            { 148, 1470313 },
+            { 149, 154 },
+            { 160, 10 },
+            { 161, 224 },
+            { 162, 156 },
+            { 163, 156 },
+            { 164, 59 },
+            { 165, 2 },
+            { 180, 49 },
+            { 181, 154 },
+            { 182, 283 },
+            { 183, 110 },
+            { 184, 305 },
+            { 185, 364 },
+            { 186, 154 },
+            { 187, 228 },
+            { 188, 90 },
+            { 189, 467 },
+            { 200, 1090412 },
+            { 201, 48 },
+            { 202, 1100422 },
+            { 203, 4550432 },
+            { -9999, -9999 }
+            };
+
+            return SBtoFCCSarray[fuel];
+        }
+
         public static double[,] SBtoFCCS(double[,] fuel_SB)
         {
             // Method that convert SB to FCCS
