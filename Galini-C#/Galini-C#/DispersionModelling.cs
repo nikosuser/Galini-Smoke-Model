@@ -559,7 +559,6 @@ namespace Galini_C_
             return termA * dispersionCoefficientZ * (termB - termC);
         }
 
-
         public static double DriverLevelDensity(double _x, double _y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
         {   //  Method that calculate driver-level (1m) smoke concentration at one target point due to one burning/smoldering point
             // 7 Inputs:

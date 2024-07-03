@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Galini-C#")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7acda2eb516e1731fe2a076cd8edd9eecbcfae15")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dd50ef56dfd9ea482391a595a1fc21ca828a6a65")]
 [assembly: System.Reflection.AssemblyProductAttribute("Galini-C#")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Galini-C#")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

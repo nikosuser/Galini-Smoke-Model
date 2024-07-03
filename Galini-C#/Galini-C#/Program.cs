@@ -135,13 +135,10 @@ namespace Galini_C_
 
             Helpers.WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + "/topDownRaster.csv");
             Helpers.WriteMatrixToCSV(driverLevelDensity, System.IO.Directory.GetCurrentDirectory() + "/driverLevelDensity.csv");
-            /*
+            
             string scriptPath = System.IO.Directory.GetCurrentDirectory() + "/visualise.py";
             string result = Helpers.RunPythonScript(scriptPath);
 
-            string imagePath = System.IO.Directory.GetCurrentDirectory() + "/output.png";
-
-            */
         }  
     }
 }

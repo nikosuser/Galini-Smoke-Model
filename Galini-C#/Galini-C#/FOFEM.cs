@@ -162,7 +162,7 @@ namespace Galini_C_
             // Execute FOFEM command
             string externalProgram = simulationPath + "/bin/TestSpatialFOFEM.exe";
             string outputFolder = simulationPath + "/FOFEMoutput/";
-            string commandFOFEM = $"/C \"{simulationPath}/setEnv.bat\" & \"{externalProgram}\" \"{fofemInputFileLoc}\" \"{outputFolder}\"";
+            string commandFOFEM = $" \"{simulationPath}/setEnv.bat\" \"{externalProgram}\" \"{fofemInputFileLoc}\" \"{outputFolder}\"";
             commandFOFEM = commandFOFEM.Replace("\\", "/");
             Helpers.ExecuteCommand(commandFOFEM);
 
