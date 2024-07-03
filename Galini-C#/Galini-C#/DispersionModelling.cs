@@ -610,6 +610,8 @@ namespace Galini_C_
 
             double[,] topDownRaster = new double[rows, cols];
 
+            //setup progress bars
+            int totalBurningCells = 0;
             for (int i = 0; i < w; i++)
             {
                 for (int j = 0; j < l; j++)
@@ -617,7 +619,30 @@ namespace Galini_C_
                     // check if the point is producing smoke (burning or smoldering)
                     if (burningPoint_fireDomain[i, j] != 0)
                     {
-                        Console.WriteLine(i.ToString() + ", " + j.ToString());
+                        totalBurningCells++;
+                    }
+                }
+            }
+
+            int count = 0;
+            int progress = 1;
+            Console.WriteLine("Calculating Total Top-Down Concentration");
+            for (int i = 0; i < w; i++)
+            {
+                for (int j = 0; j < l; j++)
+                {
+                    // check if the point is producing smoke (burning or smoldering)
+                    if (burningPoint_fireDomain[i, j] != 0)
+                    {
+                        count++;
+                        if (100*count/totalBurningCells >= progress * 5)
+                        {
+                            if (progress % 2 == 0) {Console.Write(" *"); }
+                            else { Console.Write(" |"); }
+                            
+                            progress++;
+                        }
+                        
 
                         steadyStateHeight = FindInjectionHeight_Andersen(cellsize_Fire, T_amb, P_amb, environmentalLapseRate, dryAdiabaticLapseRate, firelineIntensity[i,j], ROS[i,j]);
 
@@ -733,6 +758,7 @@ namespace Galini_C_
                 }
             }
 
+            Console.WriteLine(" ");
             return topDownRaster;
         }
 
