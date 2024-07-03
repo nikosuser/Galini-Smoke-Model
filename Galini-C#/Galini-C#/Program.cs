@@ -120,7 +120,9 @@ namespace Galini_C_
             }
             double[] dispCoeffs = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
 
-            double[,] topDownRaster = DispersionModelling.DispersionModel_topDownConcentration(config,
+            double[,] topDownRaster;
+            double[,] driverLevelDensity;
+            (topDownRaster, driverLevelDensity) = DispersionModelling.DispersionModel(config,
                                                                 burningPointMatrix,
                                                                 firelineIntensity,
                                                                 ROS,
@@ -129,16 +131,17 @@ namespace Galini_C_
                                                                 fireDomainDims,
                                                                 dispCoeffs);
 
-            //double[,] driverLevelDensity = DispersionModelling.dispersionModel_driverLevel([12, 12], scaleFactor, [20, 30], 350, 10, 3, 70, dispCoeffOut, 30, 5);
+         
 
-            Helpers.WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + "/output.csv");
-
+            Helpers.WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + "/topDownRaster.csv");
+            Helpers.WriteMatrixToCSV(driverLevelDensity, System.IO.Directory.GetCurrentDirectory() + "/driverLevelDensity.csv");
+            /*
             string scriptPath = System.IO.Directory.GetCurrentDirectory() + "/visualise.py";
             string result = Helpers.RunPythonScript(scriptPath);
 
             string imagePath = System.IO.Directory.GetCurrentDirectory() + "/output.png";
 
-
+            */
         }  
     }
 }
