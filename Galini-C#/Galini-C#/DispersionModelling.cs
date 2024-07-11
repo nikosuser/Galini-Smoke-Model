@@ -534,9 +534,10 @@ namespace Galini_C_
 
         }
 
-        public static double TopDownRaster(double _x, double _y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
+        public static double TopDownRaster(double Height, double _x, double _y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
         {   //  Method that calculate top-down smoke concentration at one target point due to one burning/smoldering point
-            // 7 Inputs:
+            // 8 Inputs:
+            // double maxHeight (300000m)
             // double x,y coordinates in metre on smoke domain
             // double y,z dispersion coefficients
             // double emission mass flow rate,
@@ -547,7 +548,7 @@ namespace Galini_C_
             double termA = Math.Sqrt(Math.PI / 2) * (emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
                             Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
 
-            double zMax = 300000;
+            double zMax = Height;
             double zMin = 0;        //Hardcoded values instead of integrating 
 
             double termB = Erf((zMax - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
@@ -559,9 +560,10 @@ namespace Galini_C_
             return termA * dispersionCoefficientZ * (termB - termC);
         }
 
-        public static double DriverLevelDensity(double _x, double _y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
+        public static double DriverLevelDensity(double surfaceHeight, double _x, double _y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
         {   //  Method that calculate driver-level (1m) smoke concentration at one target point due to one burning/smoldering point
-            // 7 Inputs:
+            // 8 Inputs:
+            // double surface height of terrain on smoke domain
             // double x,y coordinates in metre on smoke domain
             // double y,z dispersion coefficients
             // double emission mass flow rate,
@@ -569,7 +571,7 @@ namespace Galini_C_
             // double injection height
             // Return driver-level smoke concentration at one target point due to one burning/smoldering point
 
-            double z = 1.0; //Driver level height
+            double z = 1.0 + surfaceHeight ; //Driver level height
             double term1 = emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY);
             double term2 = Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
             double term3 = Math.Exp(-Math.Pow(z - steadyStateHeight, 2) / (2 * Math.Pow(dispersionCoefficientZ, 2)));
@@ -578,7 +580,8 @@ namespace Galini_C_
             return term1 * term2 * (term3 + term4);
         }
 
-        public static (double[,], double[,]) DispersionModel(Dictionary<string, double> config,
+        public static (double[,], double[,], double[,]) DispersionModel(double[,] elevation,
+                                                                Dictionary<string, double> config,
                                                                 double[,] burningPoint_fireDomain,
                                                                 double[,] firelineIntensity,
                                                                 double[,] ROS,
@@ -588,9 +591,9 @@ namespace Galini_C_
                                                                 double[] dispCoeff
                                                                 )
         {
-            //Method that calculates the total top-down & driver-level smoke concentration for a landscape. 
+            //Method that calculates the total top-down & driver-level smoke concentration & smoke concentration below terrain surface for a landscape. 
 
-            //Returns the total top-down & driver-level smoke concentration in the smoke domain.
+            //Returns the total top-down smoke concentration & driver-level smoke concentration & smoke concentration below terrain in the smoke domain.
 
             double windAngle = config["windAngle"];
             double windVelocity = config["windVelocity"];
@@ -602,6 +605,7 @@ namespace Galini_C_
             double environmentalLapseRate = config["environmentalLapseRate"];
             double dryAdiabaticLapseRate = config["dryAdiabaticLapseRate"];
 
+            double maxHeight = 300000;
 
             if (windAngle == 0)
             {
@@ -623,6 +627,22 @@ namespace Galini_C_
 
             double[,] topDownRaster = new double[rows, cols];
             double[,] driverLevelDensity = new double[rows, cols];
+            double[,] smokeBelowTerrain = new double[rows, cols];
+
+            //setup terrain in smoke domain (!!ASSUMING elevation.asc same cellsize as smoke domain)
+            double[,] elevationSmokeDomain = new double[rows, cols];
+            double elevationWidth = elevation.GetLength(0);
+            double elevationLength = elevation.GetLength(1);
+            for (int i  = 0; i < elevationWidth; i++)
+            {
+                for (int j = 0; j < elevationLength; j++)
+                {
+                    int a = (int) (rows / 2 - (elevationWidth / 2 - i));
+                    int b = (int)(rows/ 2 - (elevationWidth / 2 - j));
+                    elevationSmokeDomain[a, b] = elevation[i, j];
+                }
+            }
+
 
             //setup progress bars
             int totalBurningCells = 0;
@@ -637,6 +657,8 @@ namespace Galini_C_
                     }
                 }
             }
+
+        
 
             int count = 0;
             int progress = 1;
@@ -661,6 +683,7 @@ namespace Galini_C_
                         steadyStateHeight = FindInjectionHeight_Andersen(cellsize_Fire, T_amb, P_amb, environmentalLapseRate, dryAdiabaticLapseRate, firelineIntensity[i, j], ROS[i, j]);
 
                         double[] burningPoint_smokeDomain = [(scaleFactor * w / 2 - (w / 2 - i)) * cellsize_Fire / cellsize_Smoke, (scaleFactor * l / 2 - (l / 2 - j)) * cellsize_Fire / cellsize_Smoke];
+
 
                         // define a boundary line y = kx + b, where no smoke spread to the side opposing wind direction
                         double k = -Math.Tan(WindAngle_rad);
@@ -698,8 +721,11 @@ namespace Galini_C_
                                                 double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
                                                 double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
 
-                                                topDownRaster[x, y] += TopDownRaster(_x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
-                                                driverLevelDensity[x, y] += DriverLevelDensity(_x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                topDownRaster[x, y] += TopDownRaster(maxHeight, _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                driverLevelDensity[x, y] += DriverLevelDensity(elevationSmokeDomain[x, y], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                smokeBelowTerrain[x, y] += TopDownRaster(elevationSmokeDomain[x,y], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+
+
                                             }
                                         }
                                     }
@@ -733,8 +759,9 @@ namespace Galini_C_
                                                 double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
                                                 double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
 
-                                                topDownRaster[x, y] += TopDownRaster(_x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
-                                                driverLevelDensity[x, y] += DriverLevelDensity(_x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                topDownRaster[x, y] += TopDownRaster(maxHeight, _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                driverLevelDensity[x, y] += DriverLevelDensity(elevationSmokeDomain[x, y], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                smokeBelowTerrain[x, y] += TopDownRaster(elevationSmokeDomain[x, y], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
                                             }
                                         }
                                     }
@@ -771,8 +798,9 @@ namespace Galini_C_
                                                 double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
                                                 double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
 
-                                                topDownRaster[x, y] += TopDownRaster(_x, _y, dispersionCoefficientY, dispersionCoefficientZ, smolderingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
-                                                driverLevelDensity[x, y] += DriverLevelDensity(_x, _y, dispersionCoefficientY, dispersionCoefficientZ, smolderingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                topDownRaster[x, y] += TopDownRaster(maxHeight, _x, _y, dispersionCoefficientY, dispersionCoefficientZ, smolderingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                driverLevelDensity[x, y] += DriverLevelDensity(elevationSmokeDomain[x, y], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                smokeBelowTerrain[x, y] += TopDownRaster(elevationSmokeDomain[x, y], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
                                             }
                                         }
                                     }
@@ -807,8 +835,9 @@ namespace Galini_C_
                                                 double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
                                                 double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
 
-                                                topDownRaster[x, y] += TopDownRaster(_x, _y, dispersionCoefficientY, dispersionCoefficientZ, smolderingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
-                                                driverLevelDensity[x, y] += DriverLevelDensity(_x, _y, dispersionCoefficientY, dispersionCoefficientZ, smolderingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                topDownRaster[x, y] += TopDownRaster(maxHeight, _x, _y, dispersionCoefficientY, dispersionCoefficientZ, smolderingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                driverLevelDensity[x, y] += DriverLevelDensity(elevationSmokeDomain[x, y], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
+                                                smokeBelowTerrain[x, y] += TopDownRaster(elevationSmokeDomain[x, y], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, flamingEmissionsFlowrate[i, j], windVelocity, steadyStateHeight);
                                             }
                                         }
                                     }
@@ -820,7 +849,9 @@ namespace Galini_C_
             }
 
             Console.WriteLine(" ");
-            return (topDownRaster, driverLevelDensity);
+            return (topDownRaster, driverLevelDensity, smokeBelowTerrain);
         }
+   
+
     }
 }

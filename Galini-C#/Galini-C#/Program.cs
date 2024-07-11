@@ -27,6 +27,7 @@ namespace Galini_C_
             string fuelMoistureFile = "/moisture.fms";
             string fccs_outputFileName = "/fuel_fccs.tif";
             string fofemInputFileName = "/FOFEM.txt";
+            string elevationHeight = "/elevation.asc";
 
             Dictionary<string, double> config = new Dictionary<string, double>()
             {
@@ -51,6 +52,7 @@ namespace Galini_C_
             double[,] firelineIntensity = Helpers.GetAscFile(rootPath, firelineIntensityFile, 6);
             double[,] fuelMoisture = Helpers.GetAscFile(rootPath, fuelMoistureFile, 0);
             double[,] fuel_SB = Helpers.GetAscFile(rootPath, fuelSBFile, 6);
+            double[,] elevation= Helpers.GetAscFile(rootPath, elevationHeight, 6);
 
             FOFEM.runFOFEM(rootPath, fofemInputFileName, fccs_outputFileName, fuelMoisture);
 
@@ -122,7 +124,9 @@ namespace Galini_C_
 
             double[,] topDownRaster;
             double[,] driverLevelDensity;
-            (topDownRaster, driverLevelDensity) = DispersionModelling.DispersionModel(config,
+            double[,] smokeBelowTerrain;
+            (topDownRaster, driverLevelDensity, smokeBelowTerrain) = DispersionModelling.DispersionModel(elevation,
+                                                                config,
                                                                 burningPointMatrix,
                                                                 firelineIntensity,
                                                                 ROS,
@@ -135,7 +139,8 @@ namespace Galini_C_
 
             Helpers.WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + "/topDownRaster.csv");
             Helpers.WriteMatrixToCSV(driverLevelDensity, System.IO.Directory.GetCurrentDirectory() + "/driverLevelDensity.csv");
-            
+            Helpers.WriteMatrixToCSV(smokeBelowTerrain, System.IO.Directory.GetCurrentDirectory() + "/smokeBelowTerrain.csv");
+
             string scriptPath = System.IO.Directory.GetCurrentDirectory() + "/visualise.py";
             string result = Helpers.RunPythonScript(scriptPath);
 

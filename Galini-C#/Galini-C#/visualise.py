@@ -7,7 +7,7 @@ csv_file_path2 = 'driverLevelDensity.csv'
 
 # Read the CSV file into a 2D numpy array
 output1 = np.loadtxt(csv_file_path1, delimiter=',')
-output2 = np.loadtxt(csv_file_path1, delimiter=',')
+output2 = np.loadtxt(csv_file_path2, delimiter=',')
 
 # Generate x and y coordinates
 x = np.arange(output1.shape[1])
