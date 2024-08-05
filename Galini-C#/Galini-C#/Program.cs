@@ -1,12 +1,6 @@
-﻿using OSGeo.GDAL;
-using OSGeo.OSR;
-using System.Diagnostics;
-using System.Globalization;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System;
-using System.Drawing;
-using System.Windows.Forms;
-using IronPython.Compiler.Ast;
 
 namespace Galini_C_
 {

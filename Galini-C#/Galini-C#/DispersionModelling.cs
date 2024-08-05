@@ -14,7 +14,6 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
-using static IronPython.SQLite.PythonSQLite;
 using System.ComponentModel.Design;
 using System.Drawing;
 
@@ -588,8 +587,8 @@ namespace Galini_C_
             double windAngle = config["windAngle"];
             double windVelocity = config["windVelocity"];
             double scaleFactor = config["scaleFactor"];
-            double cellsize_Fire = config["cellsize_fire"];
-            double cellsize_Smoke = config["cellsize_smoke"];
+            double cellsizeFire = config["cellsize_fire"];
+            double cellsizeSmoke = config["cellsize_smoke"];
             double T_amb = config["atmosphericTemp"];
             double P_amb = config["atmosphericPressure"];
             double environmentalLapseRate = config["environmentalLapseRate"];
@@ -607,7 +606,7 @@ namespace Galini_C_
 
             double w = fireDomainDims[0];
             double l = fireDomainDims[1];
-            double[] smokeDomainDims = [scaleFactor * w * cellsize_Fire / cellsize_Smoke, scaleFactor * l * cellsize_Fire / cellsize_Smoke];
+            double[] smokeDomainDims = [scaleFactor * w * cellsizeFire / cellsizeSmoke, scaleFactor * l * cellsizeFire / cellsizeSmoke];
 
             int rows = (int)smokeDomainDims[0];
             int cols = (int)smokeDomainDims[1];
@@ -661,7 +660,7 @@ namespace Galini_C_
                     {
                         count++;
 
-                        double[] burningPoint_smokeDomain = [(scaleFactor * w / 2 - (w / 2 - i)) * cellsize_Fire / cellsize_Smoke, (scaleFactor * l / 2 - (l / 2 - j)) * cellsize_Fire / cellsize_Smoke];
+                        double[] burningPoint_smokeDomain = [(scaleFactor * w / 2 - (w / 2 - i)) * cellsizeFire / cellsizeSmoke, (scaleFactor * l / 2 - (l / 2 - j)) * cellsizeFire / cellsizeSmoke];
                         //double[] burningPoint_smokeDomain = [i, j];
 
 
@@ -675,7 +674,7 @@ namespace Galini_C_
                         string fireStatus = "No Fire";
                         double smokeTemp = 273;
                         double exitVelocity = 1;
-                        double[] phases = AdjustForSubgrid(flamingTime[i, j], smolderingTime[i, j], ROS[i, j], cellsize_Fire, subgridTime[i, j]);
+                        double[] phases = AdjustForSubgrid(flamingTime[i, j], smolderingTime[i, j], ROS[i, j], cellsizeFire, subgridTime[i, j]);
 
                         subgridOut[i, j] = subgridTime[i,j];
 
@@ -697,9 +696,9 @@ namespace Galini_C_
                             double delta = 11;
                             while (Math.Abs(delta) > 3)
                             {
-                                steadyStateHeight = FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsize_Fire, P_amb / 100000, T_amb);
+                                steadyStateHeight = FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsizeFire, P_amb / 100000, T_amb);
                                 windVelocity = HellmannWindAdjust(config["windVelocity"], config["RAWSelevation"], steadyStateHeight, atmoStabilityIndex);
-                                delta = steadyStateHeight - FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsize_Fire, P_amb / 100000, T_amb);
+                                delta = steadyStateHeight - FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsizeFire, P_amb / 100000, T_amb);
                             }
                             injectionHeight[i, j] = steadyStateHeight;
 
@@ -729,8 +728,8 @@ namespace Galini_C_
                                     //XYplume is zero, the zero occurs in the denominator of TopDownRaster function, TopDownRaster function died, so just add 0 instead of running the function.
                                     if (!(XYplume[0] == 0 && XYplume[1] == 0))
                                     {
-                                        double _x = XYplume[0] * cellsize_Smoke;
-                                        double _y = XYplume[1] * cellsize_Smoke;      //convert to meters
+                                        double _x = XYplume[0] * cellsizeSmoke;
+                                        double _y = XYplume[1] * cellsizeSmoke;      //convert to meters
 
                                         double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
                                         double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
@@ -753,9 +752,9 @@ namespace Galini_C_
                             double delta = 11;
                             while (Math.Abs(delta) > 3)
                             {
-                                steadyStateHeight = FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsize_Fire, P_amb / 100000, T_amb);
+                                steadyStateHeight = FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsizeFire, P_amb / 100000, T_amb);
                                 windVelocity = HellmannWindAdjust(config["windVelocity"], config["RAWSelevation"], steadyStateHeight, atmoStabilityIndex);
-                                delta = steadyStateHeight - FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsize_Fire, P_amb / 100000, T_amb);
+                                delta = steadyStateHeight - FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsizeFire, P_amb / 100000, T_amb);
                             }
                             injectionHeight[i, j] = steadyStateHeight;
 
@@ -785,8 +784,8 @@ namespace Galini_C_
                                     //XYplume is zero, the zero occurs in the denominator of TopDownRaster function, TopDownRaster function died, so just add 0 instead of running the function.
                                     if (!(XYplume[0] == 0 && XYplume[1] == 0))
                                     {
-                                        double _x = XYplume[0] * cellsize_Smoke;
-                                        double _y = XYplume[1] * cellsize_Smoke;      //convert to meters
+                                        double _x = XYplume[0] * cellsizeSmoke;
+                                        double _y = XYplume[1] * cellsizeSmoke;      //convert to meters
 
                                         _x = (_x == 0) ? _x + 0.05 : _x;
 
