@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MaxRev.Gdal.Core;
 using static IronPython.Runtime.Profiler;
 
 namespace Galini_C_
@@ -43,7 +44,7 @@ namespace Galini_C_
 
         public static void SaveGeoTIFF(string outputPath,double[,] dataArray)
         {
-            GdalConfiguration.ConfigureGdal();
+            GdalBase.ConfigureAll();
             Gdal.AllRegister();
 
             // Define the dimensions of the array
@@ -81,7 +82,7 @@ namespace Galini_C_
 
         public static void SaveGeoTIFFfileByCopy(string inputFile, string outputFile, float[,] data)
         {
-            GdalConfiguration.ConfigureGdal();
+            GdalBase.ConfigureAll();
             Gdal.AllRegister();
             Dataset ds = Gdal.Open(inputFile, Access.GA_ReadOnly);
             Driver drv = ds.GetDriver();
@@ -125,7 +126,7 @@ namespace Galini_C_
         }
         public static double[,] ReadGeoTIFFfile(string inputFile)
         {
-            GdalConfiguration.ConfigureGdal();
+            GdalBase.ConfigureAll();
             Gdal.AllRegister();
 
             /* -------------------------------------------------------------------- */

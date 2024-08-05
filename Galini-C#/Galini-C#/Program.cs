@@ -9,8 +9,8 @@ namespace Galini_C_
         public static void Main(string[] args)
         {
             //----------------------------INPUT VARIABLES--------------------------------------
-            string rootPath = @"C:\GaliniData";
-            string caseStudy = "/FlatPoint_actual";
+            string rootPath = @"/Users/panos/GitRepos/nick/Galini-Smoke-Model";
+            string caseStudy = "/Ramp";
             int timeSteps = 1; //minuts per timestep
 
             if (Directory.Exists(rootPath + caseStudy + "/Output/"))
