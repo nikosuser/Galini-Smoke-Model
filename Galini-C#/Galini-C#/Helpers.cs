@@ -1,4 +1,6 @@
-﻿using OSGeo.GDAL;
+﻿using Microsoft.Scripting.Utils;
+using OSGeo.GDAL;
+using OSGeo.OSR;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,6 +14,71 @@ namespace Galini_C_
 {
     public class Helpers
     {
+        public static double GetRawsElevation(string filePath)
+        {       
+            try
+            {
+                foreach (string line in File.ReadLines(filePath))
+                {
+                    if (line.StartsWith("RAWS_ELEVATION:"))
+                    {
+                        string elevationStr = line.Split(':')[1].Trim();
+                        if (double.TryParse(elevationStr, out double elevation))
+                        {
+                            return elevation;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Failed to convert RAWS_ELEVATION to double.");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+            }
+            return 0;
+        }
+
+        public static void SaveGeoTIFF(string outputPath,double[,] dataArray)
+        {
+            GdalConfiguration.ConfigureGdal();
+            Gdal.AllRegister();
+
+            // Define the dimensions of the array
+            int rows = dataArray.GetLength(0);
+            int cols = dataArray.GetLength(1);
+
+            // Create a new GeoTIFF file
+            Driver driver = Gdal.GetDriverByName("GTiff");
+            Dataset dataset = driver.Create(outputPath, cols, rows, 1, DataType.GDT_Float64, null);
+
+            // Create a Spatial Reference (optional)
+            SpatialReference srs = new SpatialReference("");
+            srs.SetWellKnownGeogCS("WGS84");
+            string wkt;
+            srs.ExportToWkt(out wkt, null);
+            dataset.SetProjection(wkt);
+
+            // Set the GeoTransform (optional, defines the position and pixel size)
+            double[] geoTransform = { 0, 1, 0, 0, 0, -1 }; // Example values
+            dataset.SetGeoTransform(geoTransform);
+
+            // Get the band and write the data
+            Band band = dataset.GetRasterBand(1);
+            double[] dataBuffer = new double[rows * cols];
+            Buffer.BlockCopy(dataArray, 0, dataBuffer, 0, rows * cols * sizeof(double));
+            band.WriteRaster(0, 0, cols, rows, dataBuffer, cols, rows, 0, 0);
+
+            // Flush data to disk and clean up
+            band.FlushCache();
+            dataset.FlushCache();
+            dataset.Dispose();
+
+            Console.WriteLine("GeoTIFF file created successfully.");
+        }
+
         public static void SaveGeoTIFFfileByCopy(string inputFile, string outputFile, float[,] data)
         {
             GdalConfiguration.ConfigureGdal();
@@ -56,7 +123,7 @@ namespace Galini_C_
             tiffOutput.FlushCache();
             tiffOutput.Dispose();
         }
-        public static float[,] ReadGeoTIFFfile(string inputFile)
+        public static double[,] ReadGeoTIFFfile(string inputFile)
         {
             GdalConfiguration.ConfigureGdal();
             Gdal.AllRegister();
@@ -107,7 +174,7 @@ namespace Galini_C_
             double[,] dataMatrix = new double[width, height];
             var dataArr = band0.ReadRaster(0, 0, width, height, data, width, height, 0, 0);
 
-            float[,] output = new float[width, height];
+            double[,] output = new double[width, height];
             for (int i = 0; i < width; i++)
             {
                 for (int j = 0; j < height; j++)

@@ -1,5 +1,4 @@
-﻿
-using OSGeo.GDAL;
+﻿using OSGeo.GDAL;
 using OSGeo.OSR;
 using System.Diagnostics;
 using System.Globalization;
@@ -7,27 +6,39 @@ using System.IO;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using IronPython.Compiler.Ast;
 
 namespace Galini_C_
 {
     internal class Program
     {
-
         public static void Main(string[] args)
         {
             //----------------------------INPUT VARIABLES--------------------------------------
+            string rootPath = @"C:\GaliniData";
+            string caseStudy = "/FlatPoint_actual";
+            int timeSteps = 1; //minuts per timestep
 
-            DateTime smokeTime = new DateTime(2024, 5, 30, 13, 00, 00);
+            if (Directory.Exists(rootPath + caseStudy + "/Output/"))
+            {
+                Directory.Delete(rootPath + caseStudy + "/Output/", true);
+            }
+            Directory.CreateDirectory(rootPath + caseStudy + "/Output/");
 
-            string weatherFile = "/weather.wxs";
-            string arrivalTimeFile = "/arrivalTime.asc";
-            string rateOfSpreadFile = "/rateofspread.asc";
-            string firelineIntensityFile = "/firelineintensity.asc";
-            string fuelSBFile = "/fuel.asc";
-            string fuelMoistureFile = "/moisture.fms";
+            string weatherFile = caseStudy + "/weather.wxs";
+            string arrivalTimeFile = caseStudy + "/arrivalTime.asc";
+            string rateOfSpreadFile = caseStudy + "/rateofspread.asc";
+            //string heatPUAFile = caseStudy + "/heatpua.asc";
+            string fuelSBFile = caseStudy + "/fuel.asc";
+            string fuelMoistureFile = caseStudy + "/moisture.fms";
             string fccs_outputFileName = "/fuel_fccs.tif";
             string fofemInputFileName = "/FOFEM.txt";
-            string elevationHeight = "/elevation.asc";
+            string elevationHeight = caseStudy + "/elevation.asc";
+
+            if (!File.Exists(rootPath + caseStudy + fccs_outputFileName))
+            {
+                File.Delete(rootPath + caseStudy + fccs_outputFileName);
+            }
 
             Dictionary<string, double> config = new Dictionary<string, double>()
             {
@@ -36,113 +47,151 @@ namespace Galini_C_
                 {"atmosphericTemp", -1 },
                 {"atmosphericPressure", 100000 },
                 {"cellsize_fire", 30 },
-                {"cellsize_smoke", 45 },
-                {"scaleFactor", 2 },
+                {"cellsize_smoke", 30 },
+                {"scaleFactor", 1 },
                 {"environmentalLapseRate", -6.5 },
-                {"dryAdiabaticLapseRate", -9.8 }
+                {"dryAdiabaticLapseRate", -9.8 },
+                {"RAWSelevation", Helpers.GetRawsElevation(rootPath + weatherFile) }
             };
-
-            double burning_period = 10;             //turn to matrix
-
-            string rootPath = Directory.GetCurrentDirectory();
 
             double[,] weatherInput = Helpers.GetAscFile(rootPath, weatherFile, 4);
             double[,] arrivalTime = Helpers.GetAscFile(rootPath, arrivalTimeFile, 6);
             double[,] ROS = Helpers.GetAscFile(rootPath, rateOfSpreadFile, 6);
-            double[,] firelineIntensity = Helpers.GetAscFile(rootPath, firelineIntensityFile, 6);
+            //double[,] heatPUA = Helpers.GetAscFile(rootPath, heatPUAFile, 6);
             double[,] fuelMoisture = Helpers.GetAscFile(rootPath, fuelMoistureFile, 0);
             double[,] fuel_SB = Helpers.GetAscFile(rootPath, fuelSBFile, 6);
             double[,] elevation= Helpers.GetAscFile(rootPath, elevationHeight, 6);
 
-            FOFEM.runFOFEM(rootPath, fofemInputFileName, fccs_outputFileName, fuelMoisture);
+            FOFEM.runFOFEM(fuel_SB, rootPath, fofemInputFileName, fccs_outputFileName, fuelMoisture);
 
             double[] fireDomainDims = [arrivalTime.GetLength(0), arrivalTime.GetLength(1)];                        //Total fire domain size 
             double[,] burningPointMatrix = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];       //coordinates of points on fire (about fire domain)
             double[,] flamingTime = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];
             double[,] smolderingTime = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];  //awaiting for update?
-            float[,] flamingEmissions = Helpers.ReadGeoTIFFfile(rootPath + "/FOFEMoutput/_Flaming PM10.tif");
-            float[,] smolderingEmissions = Helpers.ReadGeoTIFFfile(rootPath + "/FOFEMoutput/_Smoldering PM10.tif");
-            double[,] flamingEmissionsFlowrate = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];
-            double[,] smolderingEmissionsFlowrate = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];
-
+            double[,] flamingEmissions = Helpers.ReadGeoTIFFfile(rootPath + "/FOFEMoutput/_Flaming PM10.tif");
+            double[,] smolderingEmissions = Helpers.ReadGeoTIFFfile(rootPath + "/FOFEMoutput/_Smoldering PM10.tif");
+            
             //outputs are in pounds per acre, so we convert them to grams per square meter
 
             for (int i=0; i<fireDomainDims[0]; i++)
             {
                 for (int j = 0; j < fireDomainDims[1]; j++)
                 {
+                    //burningPointMatrix[i,j] = (arrivalTime[i,j] <= flamingTime[i,j] + smolderingTime[i,j] + config["cellsize_fire"] / ROS[i,j]) ? 1 : 0; 
                     flamingEmissions[i, j] = (float)(0.112085 * flamingEmissions[i, j]);
                     smolderingEmissions[i, j] = (float)(0.112085 * smolderingEmissions[i, j]);
+
+                    //fill times with dummy variables for now
+                    flamingTime[i, j] = 15;
+                    smolderingTime[i, j] = 120;
                 }
             }
 
-            // read the corresponding variables 
-            DateTime fireStartTime = new DateTime();
+            int totalWeatherInputs = weatherInput.GetLength(0)-1;
+            DateTime fireEndTime = new DateTime((int)weatherInput[totalWeatherInputs, 0], (int)weatherInput[totalWeatherInputs, 1], (int)weatherInput[totalWeatherInputs, 2], (int)(weatherInput[totalWeatherInputs, 3] / 100), (int)(weatherInput[totalWeatherInputs, 3] % 100), 0);
+            DateTime fireStartTime = new DateTime((int)weatherInput[0, 0], (int)weatherInput[0, 1], (int)weatherInput[0, 2], (int)(weatherInput[0, 3] / 100), (int)(weatherInput[0, 3] % 100), 0);
 
-            for (int i = 0; i < weatherInput.GetLength(0); i++)
+            int totalSteps = (int)((fireEndTime - fireStartTime).TotalMinutes / timeSteps);
+            double[] windMagPerStep = new double[totalSteps];
+            double[] windDirPerStep = new double[totalSteps];
+            for (int step = 0; step < totalSteps; step++)
             {
-                DateTime inputRowTime = new DateTime((int)weatherInput[i, 0], (int)weatherInput[i, 1], (int)weatherInput[i, 2], (int)(weatherInput[i, 3] / 100), (int)(weatherInput[i, 3] % 100), 0);
+                int index1 = 0;
+                int index2 = 0;
+                DateTime hour1 = new DateTime();
+                DateTime hour2 = new DateTime();
+                DateTime smokeTime = fireStartTime.AddMinutes(step*timeSteps);
+                for (int i = 0; i < weatherInput.GetLength(0); i++)
+                {
+                    DateTime inputRowTime = new DateTime((int)weatherInput[i, 0], (int)weatherInput[i, 1], (int)weatherInput[i, 2], (int)(weatherInput[i, 3] / 100), (int)(weatherInput[i, 3] % 100), 0);
 
-                if (i == 0)
-                {
-                    fireStartTime = inputRowTime;
+                    if ((int)(smokeTime - inputRowTime).TotalMinutes < 60)
+                    {
+                        hour1 = inputRowTime.AddHours(1);
+                        hour2 = inputRowTime;
+                        index1 = i + 1;
+                        index2 = i;
+
+                        double hourProgress = (smokeTime - hour2).TotalMinutes / (hour1 - hour2).TotalMinutes;
+                        windMagPerStep[step] = weatherInput[index2, 7] + hourProgress * (weatherInput[index1, 7] - weatherInput[index2, 7]);
+                
+                        double windDirShift = (weatherInput[index1, 8] - weatherInput[index2, 8]);
+                        windDirShift = (windDirShift < 0) ? windDirShift + 360 : windDirShift;
+                        bool clockwiseShift = (windDirShift % 180 == windDirShift) ? true : false;
+                        if (clockwiseShift)
+                        {
+                            windDirPerStep[step] = (hourProgress * windDirShift + weatherInput[index2, 8]) % 360;
+                        }
+                        else
+                        {
+                            windDirShift = (360 - windDirShift) % 180;
+                            windDirPerStep[step] = (weatherInput[index2, 8] - hourProgress * windDirShift) % 360;
+                            windDirPerStep[step] = (windDirPerStep[step] < 0) ? windDirPerStep[step] + 360 : windDirPerStep[step];
+                        }
+
+                        break;
+                    }
                 }
-                if (Math.Abs((int)(smokeTime - inputRowTime).TotalMinutes) < 30)
-                {
-                    config["atmosphericTemp"] = weatherInput[i, 4];
-                    config["windVelocity"] = weatherInput[i, 7];
-                    config["WindAngle"] = weatherInput[i, 8];
-                    break;
-                }
+
             }
 
-            double targetArrivalTime = (smokeTime - fireStartTime).TotalMinutes;
-            for (int i = 0; i < fireDomainDims[0]; i++)
+
+            for (int totalTime = 0; totalTime < (fireEndTime - fireStartTime).TotalMinutes; totalTime = totalTime + timeSteps)
             {
-                for (int j = 0; j < fireDomainDims[1]; j++)
+                Console.WriteLine($"Elapsed Minutes: {totalTime} of {(fireEndTime - fireStartTime).TotalMinutes}");
+                DateTime smokeTime = fireStartTime.AddMinutes(totalTime);
+
+                double[,] subgridTime = new double[(int)fireDomainDims[0], (int)fireDomainDims[1]];
+                double targetArrivalTime = (smokeTime - fireStartTime).TotalMinutes;
+                for (int i = 0; i < fireDomainDims[0]; i++)
                 {
-                    flamingTime[i, j] = 10;
-                    smolderingTime[i, j] = 180;
-                    flamingEmissions[i, j] = 2000;
-                    smolderingEmissions[i, j] = 8000;
-                    if (arrivalTime[i, j] <= targetArrivalTime && arrivalTime[i, j] >= (targetArrivalTime - burning_period))
+                    for (int j = 0; j < fireDomainDims[1]; j++)
                     {
-                        burningPointMatrix[i, j] = 1;
-                    }
-                    else { burningPointMatrix[i, j] = 0; }
-                    if (flamingTime[i, j] + 1 != 0)
-                    {
-                        flamingEmissionsFlowrate[i, j] = flamingEmissions[i, j] / (1+flamingTime[i, j]);
-                    }
-                    if (smolderingTime[i, j] + 1 != 0)
-                    {
-                        smolderingEmissionsFlowrate[i, j] = smolderingEmissions[i, j] / (1+smolderingTime[i, j]);
+                        if (arrivalTime[i, j] >= 0)
+                        {
+                            burningPointMatrix[i, j] = 1;
+                            subgridTime[i,j] = totalTime - arrivalTime[i, j];
+                            subgridTime[i, j] = (subgridTime[i, j] >= 0) ? subgridTime[i, j] : 0; 
+                        }
                     }
                 }
+                char atmoStabilityIndex = DispersionModelling.GetStabilityClass("day", "rural", "moderate", "majority", "pessimistic", 25, config["windVelocity"]);
+                double[] dispCoeffs = DispersionModelling.GetDispersionCoefficients("rural", atmoStabilityIndex);
+
+                Console.WriteLine($"Atmospheric Stability Class {atmoStabilityIndex}");
+
+                config["windVelocity"] = windMagPerStep[(int)(totalTime / timeSteps)];
+                config["windAngle"] = windDirPerStep[(int)(totalTime / timeSteps)];
+
+                double[,] topDownRaster;
+                double[,] driverLevelDensity;
+                double[,] fireActivePoints;
+                double[,] smolderActivePoints;
+                double[,] injectionHeight;
+                double[,] subgridOut;
+                (topDownRaster, driverLevelDensity, fireActivePoints, smolderActivePoints, injectionHeight, subgridOut) = DispersionModelling.DispersionModel(elevation,
+                                                                    config,
+                                                                    burningPointMatrix,
+                                                                    ROS,
+                                                                    flamingEmissions,
+                                                                    smolderingEmissions,
+                                                                    fireDomainDims,
+                                                                    dispCoeffs,
+                                                                    atmoStabilityIndex,
+                                                                    flamingTime,
+                                                                    smolderingTime,
+                                                                    subgridTime);
+
+                Helpers.WriteMatrixToCSV(topDownRaster, rootPath + caseStudy + "/Output/" + totalTime.ToString() + "topDownRaster.csv");
+                Helpers.WriteMatrixToCSV(driverLevelDensity, rootPath + caseStudy + "/Output/" + totalTime.ToString() + "driverLevelDensity.csv");
+                Helpers.WriteMatrixToCSV(fireActivePoints, rootPath + caseStudy + "/Output/" + totalTime.ToString() + "flamingAmount.csv");
+                Helpers.WriteMatrixToCSV(smolderActivePoints, rootPath + caseStudy + "/Output/" + totalTime.ToString() + "smolderingAmount.csv");
+                Helpers.WriteMatrixToCSV(injectionHeight, rootPath + caseStudy + "/Output/" + totalTime.ToString() + "injectionHeight.csv");
+                Helpers.WriteMatrixToCSV(subgridOut, rootPath + caseStudy + "/Output/" + totalTime.ToString() + "subgridTime.csv");
             }
-            double[] dispCoeffs = DispersionModelling.GetDispersionCoefficients("day", "rural", "strong", "majority", "pessimistic", 25, 3);
-
-            double[,] topDownRaster;
-            double[,] driverLevelDensity;
-            double[,] smokeBelowTerrain;
-            (topDownRaster, driverLevelDensity, smokeBelowTerrain) = DispersionModelling.DispersionModel(elevation,
-                                                                config,
-                                                                burningPointMatrix,
-                                                                firelineIntensity,
-                                                                ROS,
-                                                                flamingEmissionsFlowrate,
-                                                                smolderingEmissionsFlowrate,
-                                                                fireDomainDims,
-                                                                dispCoeffs);
-
-         
-
-            Helpers.WriteMatrixToCSV(topDownRaster, System.IO.Directory.GetCurrentDirectory() + "/topDownRaster.csv");
-            Helpers.WriteMatrixToCSV(driverLevelDensity, System.IO.Directory.GetCurrentDirectory() + "/driverLevelDensity.csv");
-            Helpers.WriteMatrixToCSV(smokeBelowTerrain, System.IO.Directory.GetCurrentDirectory() + "/smokeBelowTerrain.csv");
-
-            string scriptPath = System.IO.Directory.GetCurrentDirectory() + "/visualise.py";
-            string result = Helpers.RunPythonScript(scriptPath);
+            
+            //string scriptPath = rootPath + "/visualise.py";
+            //string result = Helpers.RunPythonScript(scriptPath);
 
         }  
     }

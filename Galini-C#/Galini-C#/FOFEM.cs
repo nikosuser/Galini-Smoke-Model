@@ -92,26 +92,26 @@ namespace Galini_C_
 
             }
         }
-        public static void saveFCCStiff(string inputFile, string outputFile)
+        public static void saveFCCStiff(string inputFile, string outputFile, double[,] SBfuels)
         {
 
             //-----------------------------------------------------------------------------------------------------
-
-            float[,] data = Helpers.ReadGeoTIFFfile(inputFile);
+            /*
+            double[,] data = Helpers.ReadGeoTIFFfile(inputFile);
 
             for (int i = 0; i < data.GetLength(0); i++)
             {
                 for (int j = 0; j < data.GetLength(1); j++)
                 {
-                    data[i, j] = (float)DispersionModelling.SBtoFCCS((int)data[i, j]);
+                    data[i, j] = (float)DispersionModelling.SBtoFCCS((int)SBfuels[i, j]);
                 }
             }
-
-            Helpers.SaveGeoTIFFfileByCopy(inputFile, outputFile, data);
+            */
+            Helpers.SaveGeoTIFF(outputFile, SBfuels);
 
         }
 
-        public static void runFOFEM(string simulationPath, string fofemInputFileLoc, string fccsFuelfilename, double[,] fuelMoisture) { 
+        public static void runFOFEM(double[,] SBfuels, string simulationPath, string fofemInputFileLoc, string fccsFuelfilename, double[,] fuelMoisture) { 
 
             fofemInputFileLoc = simulationPath + fofemInputFileLoc;
 
@@ -129,15 +129,24 @@ namespace Galini_C_
             double thousandHourMoisture = new double();
             if (fuelMoisture.GetLength(1) < 6)
             {
-                Console.WriteLine("1000-Hour dead fuel moisture not provided, using arbitrarily chosen value of 8%");
-                thousandHourMoisture = 8;
+                Console.WriteLine("1000-Hour dead fuel moisture not provided, using arbitrarily chosen value of 16%");
+                thousandHourMoisture = 16;
             }
             else
             {
                 thousandHourMoisture = fuelMoisture[1, 6];
             }
 
-            saveFCCStiff("fuel.asc", simulationPath + fccsFuelfilename);
+            double[,] FCCSfuels = new double[SBfuels.GetLength(0), SBfuels.GetLength(1)];
+            for (int i = 0; i < SBfuels.GetLength(0); i++)
+            {
+                for (int j = 0; j< SBfuels.GetLength(1); j++)
+                {
+                    FCCSfuels[i, j] = DispersionModelling.SBtoFCCS((int)SBfuels[i, j]);
+                }
+            }
+
+            saveFCCStiff("fuel.asc", simulationPath + fccsFuelfilename, FCCSfuels);
 
             string[] FOFEMinputfile = {$"FCCS_Layer_File: "+ fccsFuelfilename,
             "FCCS_Layer_Number: 1",
@@ -147,22 +156,31 @@ namespace Galini_C_
             $"FOFEM_10_Hour_FM: " + fuelMoisture[1,2].ToString(),
             $"FOFEM_1000_Hour_FM: " + thousandHourMoisture.ToString(),
             $"FOFEM_Duff_FM: " + fuelMoisture[1,4].ToString(),
+            "FOFEM_SMOLDERING_CO2: ",
+            "FOFEM_SMOLDERING_CO: ",
+            "FOFEM_SMOLDERING_CH4: ",
+            "FOFEM_SMOLDERING_NOX: ",
+            "FOFEM_SMOLDERING_SO2: ",
+            "FOFEM_SMOLDERING_PM25: ",
+            "FOFEM_SMOLDERING_PM10: ",            
+            "FOFEM_FLAMING_CO2: ",
+            "FOFEM_FLAMING_CO: ",
+            "FOFEM_FLAMING_CH4: ",
+            "FOFEM_FLAMING_NOX: ",
+            "FOFEM_FLAMING_SO2: ",
             "FOFEM_FLAMING_PM25: ",
             "FOFEM_FLAMING_PM10: ",
-            "FOFEM_SMOLDERING_PM25: ",
-            "FOFEM_SMOLDERING_PM10: " };
+            "FOFEM_TOTAL_FUEL_CONSUMED: ",
+            };
             // Writelines to the FOFEM input file
             Helpers.AppendLinesToFile(fofemInputFileLoc, FOFEMinputfile); 
             
-
             Console.WriteLine("FOFEM Input File Saved, Starting FOFEM!");
-
-
 
             // Execute FOFEM command
             string externalProgram = simulationPath + "/bin/TestSpatialFOFEM.exe";
             string outputFolder = simulationPath + "/FOFEMoutput/";
-            string commandFOFEM = $" \"{simulationPath}/setEnv.bat\" \"{externalProgram}\" \"{fofemInputFileLoc}\" \"{outputFolder}\"";
+            string commandFOFEM = $" {simulationPath}/setEnv.bat && {externalProgram} {fofemInputFileLoc} {outputFolder}";
             commandFOFEM = commandFOFEM.Replace("\\", "/");
             Helpers.ExecuteCommand(commandFOFEM);
 
