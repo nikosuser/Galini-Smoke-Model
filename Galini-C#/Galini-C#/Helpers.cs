@@ -1,15 +1,8 @@
-﻿using Microsoft.Scripting.Utils;
-using OSGeo.GDAL;
+﻿using OSGeo.GDAL;
 using OSGeo.OSR;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using MaxRev.Gdal.Core;
-using static IronPython.Runtime.Profiler;
 
 namespace Galini_C_
 {
