@@ -137,4 +137,3 @@ D:\OneDrive - Imperial College London\Imperial\PhD\RACEWILDFIRE\2Dsmoke\Galini-S
 D:\OneDrive - Imperial College London\Imperial\PhD\RACEWILDFIRE\2Dsmoke\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\runtimes\osx-x64\native\libMono.Unix.dylib
 D:\OneDrive - Imperial College London\Imperial\PhD\RACEWILDFIRE\2Dsmoke\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\runtimes\tvos-arm64\native\libMono.Unix.a
 D:\OneDrive - Imperial College London\Imperial\PhD\RACEWILDFIRE\2Dsmoke\Galini-Smoke-Model\Galini-C#\Galini-C#\bin\Debug\net8.0\runtimes\tvossimulator-x64\native\libMono.Unix.a
-D:\OneDrive - Imperial College London\Imperial\PhD\RACEWILDFIRE\2Dsmoke\Galini-Smoke-Model\Galini-C#\Galini-C#\obj\Debug\net8.0\Galini-C#.csproj.ResolveComReference.cache

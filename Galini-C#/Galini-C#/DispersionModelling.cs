@@ -804,7 +804,7 @@ namespace Galini_C_
                                 }
                             }
                         }
-                        Console.Write($"\r ---- {100 * count / totalBurningCells}% done, current point [ {i}, {j} ], Injection Height: {steadyStateHeight.ToString(".0")} meters, Current Phase: {fireStatus}");
+                        //Console.Write($"\r ---- {100 * count / totalBurningCells}% done, current point [ {i}, {j} ], Injection Height: {steadyStateHeight.ToString(".0")} meters, Current Phase: {fireStatus}");
                     }
                 }
             }
