@@ -1,28 +1,84 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Numerics;
-using System.Windows;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Reflection.Metadata;
-using Microsoft.VisualBasic;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.ComponentModel.DataAnnotations;
+﻿
 using System.Diagnostics;
-using System.ComponentModel.Design;
-using System.Drawing;
-
 
 namespace Galini_C_
 {
     public class DispersionModelling
     {
-        public static double[] GetDispersionCoefficients(string surfaceRoughness, char atmoStabilityClass)
+        private double[,] _elevation;
+        public Dictionary<string, double> Config;
+        public double[,] currentlyBurning;
+        private double[,] _ros;
+        private double[,] _firelineIntensity;
+        private double[,] _flamingEmissions;
+        private double[,] _smolderingEmissions;
+        private double[] _dispCoeff;
+        private char _atmoStabilityIndex;
+        private double[,] _flamingTime;
+        private double[,] _smolderingTime;
+        public double[,] SubgridTime;
+        
+        double[,] _topDownRaster;
+        double[,] _driverLevelDensity;
+        double[,] _fireActivePoints;
+        double[,] _smolderActivePoints;
+        double[,] _injectionHeight;
+        double[,] _subgridOut;
+
+        private double _windAngle;
+        private double _windVelocity;
+        private double _cellsize;
+        private double _tAmb;
+        private double _pAmb;
+        private double _environmentalLapseRate;
+        private double _dryAdiabaticLapseRate;
+        private double[] _rasterDelta;
+        /// <summary>
+        /// Main method constructor. Use this method first. 
+        /// </summary>
+        /// <param name="rasterDelta">The separation between the Lower Left corners of the fuel and elevation arrays [X,Y] (double[2])</param>
+        /// <param name="elevation">The elevation raster (double[A,B])</param>
+        /// <param name="config">a Dictionary(string, double) with simulation parameters. Must contain: "windAngle" (deg), "windVelocity" (m/s), "cellsize" (m), "atmosphericTemp" (C), "atmosphericPressure" (Pa), "environmentalLapseRate" (C/m), "dryAdiabaticLapseRate" (C/m).   </param>
+        /// <param name="ros">The rate of spread magnitude (double[X,Y])</param>
+        /// <param name="firelineIntensity">The fireline intensity of the wildfire in kW/m (double[A,B])</param>
+        /// <param name="flamingEmissions">The total emissions during flaming (double[A,B])</param>
+        /// <param name="smolderingEmissions">The total emissions during smoldering (double[A,B])</param>
+        /// <param name="flamingTime">The total flaming time (double[A,B])</param>
+        /// <param name="smolderingTime">The total smoldering time (double[A,B](_)</param>
+        public DispersionModelling(double[] rasterDelta,
+               double[,] elevation,
+               Dictionary<string, double> config,
+               double[,] ros,
+               double[,] firelineIntensity,
+               double[,] flamingEmissions,
+               double[,] smolderingEmissions,
+               double[,] flamingTime,
+               double[,] smolderingTime)
+        {
+            this._rasterDelta = rasterDelta;
+            this._elevation = elevation;
+            this.Config=config;
+            this._ros=ros;
+            this._firelineIntensity=firelineIntensity;
+            this._flamingEmissions = flamingEmissions;
+            this._smolderingEmissions = smolderingEmissions;
+            this._flamingTime = flamingTime;
+            this._smolderingTime = smolderingTime;
+            
+            this._windAngle = this.Config["windAngle"];
+            this._windVelocity = this.Config["windVelocity"];
+            this._cellsize = this.Config["cellsize"];
+            this._tAmb = this.Config["atmosphericTemp"];
+            this._pAmb = this.Config["atmosphericPressure"];
+            this._environmentalLapseRate = this.Config["environmentalLapseRate"];
+            this._dryAdiabaticLapseRate = this.Config["dryAdiabaticLapseRate"];
+        }
+        /// <summary>
+        /// Get the gaussian dispersion coefficients based on the atmospheric stability index and the surface roughness. This method returns seven parameters used to calculate sigma_y and sigma_z according to Casal
+        /// </summary>
+        /// <param name="surfaceRoughness">Describes the surface roughness of the area, either "rural" or "urban" (string)</param>
+        /// <saves>The seven factors to calculate the dispersion factors sigma_y and sigma_z (double[7])</saves>
+        public void GetDispersionCoefficients(string surfaceRoughness)
         {
             //Method that determine atmospheric stability class under different weather conditons and find corresponding values used to dispersion coefficients y and z
             //7 Inputs:
@@ -37,102 +93,111 @@ namespace Galini_C_
 
             double[] dispersionCoefficientY = new double[3];
             double[] dispersionCoefficientZ = new double[3];
-            double P = 0;
+            double p = 0;
 
             switch (surfaceRoughness)
             {
                 case "rural":
-                    switch (atmoStabilityClass)
+                    switch (this._atmoStabilityIndex)
                     {
                         case 'A':
                             dispersionCoefficientY = [0.22, 0.0001, -0.5];
                             dispersionCoefficientZ = [0.2, 0, 0];
-                            P = 0.07;
+                            p = 0.07;
                             break;
                         case 'B':
                             dispersionCoefficientY = [0.16, 0.0001, -0.5];
                             dispersionCoefficientZ = [0.12, 0, 0];
-                            P = 0.07;
+                            p = 0.07;
                             break;
                         case 'C':
                             dispersionCoefficientY = [0.11, 0.001, -0.5];
                             dispersionCoefficientZ = [0.08, 0.0002, -0.5];
-                            P = 0.10;
+                            p = 0.10;
                             break;
                         case 'D':
                             dispersionCoefficientY = [0.08, 0.0001, -0.5];
                             dispersionCoefficientZ = [0.06, 0.0015, -0.5];
-                            P = 0.15;
+                            p = 0.15;
                             break;
                         case 'E':
                             dispersionCoefficientY = [0.06, 0.0001, -0.5];
                             dispersionCoefficientZ = [0.03, 0.0003, -1];
-                            P = 0.35;
+                            p = 0.35;
                             break;
                         case 'F':
                             dispersionCoefficientY = [0.04, 0.001, -0.5];
                             dispersionCoefficientZ = [0.016, 0.0003, -1];
-                            P = 0.55;
+                            p = 0.55;
                             break;
                     }
                     break;
                 case "urban":
-                    switch (atmoStabilityClass)
+                    switch (this._atmoStabilityIndex)
                     {
                         case 'A':
                         case 'B':
                             dispersionCoefficientY = [0.32, 0.0004, -0.5];
                             dispersionCoefficientZ = [0.24, 0.0001, 0.5];
-                            P = 0.15;
+                            p = 0.15;
                             break;
                         case 'C':
                             dispersionCoefficientY = [0.22, 0.0004, -0.5];
                             dispersionCoefficientZ = [0.2, 0, 0];
-                            P = 0.20;
+                            p = 0.20;
                             break;
                         case 'D':
                             dispersionCoefficientY = [0.16, 0.0004, -0.5];
                             dispersionCoefficientZ = [0.20, 0.0003, -0.5];
-                            P = 0.25;
+                            p = 0.25;
                             break;
                         case 'E':
                         case 'F':
                             dispersionCoefficientY = [0.11, 0.0004, -0.5];
                             dispersionCoefficientZ = [0.08, 0.0015, -0.5];
-                            P = 0.30;
+                            p = 0.30;
                             break;
                     }
                     break;
             }
 
-            return [dispersionCoefficientY[0], dispersionCoefficientY[1], dispersionCoefficientY[2], dispersionCoefficientZ[0], dispersionCoefficientZ[1], dispersionCoefficientZ[2], P];
+            this._dispCoeff =  [dispersionCoefficientY[0], dispersionCoefficientY[1], dispersionCoefficientY[2], dispersionCoefficientZ[0], dispersionCoefficientZ[1], dispersionCoefficientZ[2], p];
         }
-
-        public static char GetStabilityClass(string dayOrNight, string surfaceRoughness, string insolation, string nightOvercast, string stabilityMode, double windVelocityDirectionVariation, double windVelocity)
+        /// <summary>
+        /// Get atmospheric stability index according to criteria set out in Casal
+        /// </summary>
+        /// <param name="dayOrNight">string specifying whether it is "day" or "night"</param>
+        /// <param name="insolation">string describing the sun radiative power, "strong", "moderate", or "slight"</param>
+        /// <param name="nightOvercast">string specifying whether the night sky (if dayOrNight is set to "night") is "majority" or "minority" covered by clouds</param>
+        /// <param name="stabilityMode">This method uses two methods to estimate the atmospheric stability. "pessimistic" will return the more unstable of the two values and "optimistic" will return the more stable of the two. </param>
+        /// <param name="windDirectionVariation">The hourly variation in wind direction in degrees (double)</param>
+        /// <param name="windVelocity">The current average wind velocity in m/s (double)</param>
+        /// <saves>The current Atmospheric Stability Class from A to F (char)</saves>
+        public void GetStabilityClass(string dayOrNight, string insolation, string nightOvercast, string stabilityMode, double windDirectionVariation, double windVelocity)
         {
             char atmoStabilityClassByDirection = 'O';
 
-            if (windVelocityDirectionVariation < 3.5)
+            if (windDirectionVariation < 3.5)
             {
                 atmoStabilityClassByDirection = 'F';
             }
-            else if (windVelocityDirectionVariation >= 3.5 && windVelocityDirectionVariation < 7.5)
+            else if (windDirectionVariation >= 3.5 && windDirectionVariation < 7.5)
             {
                 atmoStabilityClassByDirection = 'E';
             }
-            else if (windVelocityDirectionVariation >= 7.5 && windVelocityDirectionVariation < 12.5)
+            else if (windDirectionVariation >= 7.5 && windDirectionVariation < 12.5)
             {
                 atmoStabilityClassByDirection = 'D';
             }
-            else if (windVelocityDirectionVariation >= 12.5 && windVelocityDirectionVariation < 17.5)
+            else if (windDirectionVariation >= 12.5 && windDirectionVariation < 17.5)
             {
                 atmoStabilityClassByDirection = 'C';
             }
-            else if (windVelocityDirectionVariation >= 17.5 && windVelocityDirectionVariation < 22.5)
+            else if (windDirectionVariation >= 17.5 && windDirectionVariation < 22.5)
             {
                 atmoStabilityClassByDirection = 'B';
             }
-            else if (windVelocityDirectionVariation >= 22.5)
+            else if (windDirectionVariation >= 22.5)
             {
                 atmoStabilityClassByDirection = 'A';
             }
@@ -268,10 +333,17 @@ namespace Galini_C_
                 atmoStabilityClass = stability[0];
             }
 
-            return atmoStabilityClass;
+            this._atmoStabilityIndex = atmoStabilityClass;
         }
-
-        private static double HellmannWindAdjust(double wind10m, double rawsElevation, double sourceElevation, char atmoStabilityClass)
+        /// <summary>
+        /// Adjust the wind velocity at a target height due to the atmospheric boundary layer, following Hellmann's parameters.
+        /// </summary>
+        /// <param name="windSpeed">Wind velocity above the ground in m/s (double)</param>
+        /// <param name="rawsElevation">Elevation of wind velocity measurement (usually 10m) in m (double)</param>
+        /// <param name="sourceElevation">The elevation of the smoke source (injection height) in m (double)</param>
+        /// <param name="atmoStabilityClass">Atmospheric stability class ranging from A to F (char)</param>
+        /// <returns>The adjusted wind value for a target height in m/s (double)</returns>
+        private static double HellmannWindAdjust(double windSpeed, double rawsElevation, double sourceElevation, char atmoStabilityClass)
         {
             float hellmannExponent = 0;
             switch (atmoStabilityClass) {
@@ -289,8 +361,13 @@ namespace Galini_C_
                     break;
             }
 
-            return wind10m * MathF.Pow((float)(sourceElevation / rawsElevation),hellmannExponent);
+            return windSpeed * MathF.Pow((float)(sourceElevation / rawsElevation),hellmannExponent);
         }
+        /// <summary>
+        /// Calculate the error function of a number
+        /// </summary>
+        /// <param name="x">Input numnber (double)</param>
+        /// <returns>Error function of x (double)</returns>
         private static double Erf(double x)
         {
             // Method to calculate Erf(x)
@@ -318,81 +395,16 @@ namespace Galini_C_
 
             return sign * y;
         }
-
-        public static int SBtoFCCS(int fuel)
+        /// <summary>
+        /// Rotates 'p1' about 'p2' by 'angle' degrees clockwise.
+        /// </summary>
+        /// <param name="targetPoint">Point to be rotated</param>
+        /// <param name="burningPoint">Point to rotate around</param>
+        /// <param name="windAngle">Angle in degrees to rotate clockwise</param>
+        /// <returns>The rotated point</returns>
+        public static double[] GetCoordsAboutWindAxis(int[] burningPoint, double[] targetPoint, double windAngle)
         {
-            // Method that convert SB to FCCS
-            // 1 Input:
-            // fuel.asc (vegetaton exists in landscae in format Scott and Burgan
-            // Return vegetation in format FCCS
 
-            Dictionary<int, int> SBtoFCCSarray = new Dictionary<int, int>()
-            {
-            { 0, 0 },
-            { 91, 0 },
-            { 92, 0 },
-            { 93, 1244 },
-            { 98, 0 },
-            { 99, 0 },
-            { 100, 49 },
-            { 101, 519 },
-            { 102, 66 },
-            { 103, 66 },
-            { 104, 131 },
-            { 105, 131 },
-            { 106, 66 },
-            { 107, 318 },
-            { 108, 175 },
-            { 120, 401 },
-            { 121, 56 },
-            { 122, 308 },
-            { 123, 560112 },
-            { 124, 445 },
-            { 140, 49 },
-            { 141, 69 },
-            { 142, 52 },
-            { 143, 36 },
-            { 144, 69 },
-            { 145, 210 },
-            { 146, 470 },
-            { 147, 154 },
-            { 148, 1470313 },
-            { 149, 154 },
-            { 160, 10 },
-            { 161, 224 },
-            { 162, 156 },
-            { 163, 156 },
-            { 164, 59 },
-            { 165, 2 },
-            { 180, 49 },
-            { 181, 154 },
-            { 182, 283 },
-            { 183, 110 },
-            { 184, 305 },
-            { 185, 364 },
-            { 186, 154 },
-            { 187, 228 },
-            { 188, 90 },
-            { 189, 467 },
-            { 200, 1090412 },
-            { 201, 48 },
-            { 202, 1100422 },
-            { 203, 4550432 },
-            { -9999, -9999 }
-            };
-
-            return SBtoFCCSarray[fuel];
-        }
-
-        public static double[] GetCoordsAboutWindAxis(double[] burningPoint, double[] targetPoint, double windAngle)
-        {
-            /// <summary>
-            /// Rotates 'p1' about 'p2' by 'angle' degrees clockwise.
-            /// </summary>
-            /// <param name="p1">Point to be rotated</param>
-            /// <param name="p2">Point to rotate around</param>
-            /// <param name="angle">Angle in degrees to rotate clockwise</param>
-            /// <returns>The rotated point</returns>
             double radians = (windAngle)*Math.PI/180;
             double sin = Math.Sin(radians);
             double cos = Math.Cos(radians);
@@ -414,60 +426,102 @@ namespace Galini_C_
             double[] newPoint = [-ynew, -xnew];
             return newPoint;
         }
-
-        public static double[] GetCoordsAboutWindAxis_old(double[] burningPoint, double[] targetPoint, double windAngle)
+        /// <summary>
+        /// Find the injection height based on the Briggs plume rise equations (shamelessly stolen from VSMOKE and Lavdas
+        /// </summary>
+        /// <param name="atmoStabilityIndex">Pasquill Guilford stability index (char)</param>
+        /// <param name="sourceElevation">Elevation of source point in m (double)</param>
+        /// <param name="firelineIntensity">Fireline Intensity, as derived from Byram's equation, in kW/m (double)</param>
+        /// <param name="windVelocity">the wind velocity at the height of the fire (near ground level) (double)</param>
+        /// <param name="tAmb">Ambient temperature in C (double)</param>
+        /// <param name="cellsize">Size of the raster cell in m (double)</param>
+        /// <returns>The injecion height of smoke (added to the elevation of the source point) in m (double)</returns>
+        private static double FindInjectionHeight_Briggs(char atmoStabilityIndex, double sourceElevation, double firelineIntensity, double windVelocity, double tAmb, double cellsize)
         {
-            // Method that get target point dimensions in relation to the burning point and the wind direction, so can use its coordinates directly in smoke plume
-            // 3 Inputs:
-            // 1*2 double array (x, y) of burning point,
-            // 1*2 double array (x, y) of target point,
-            // double wind angle in degree
-            // Return a 1*2 double array (x, y) of target point relative to burning point and wind angle in smoke plume's coordinate system
+            double F = (9.81 / (3.14 * 1.005 * 1.225)) * (firelineIntensity * cellsize / (tAmb + 273));
 
+            double dtheta = 0;
+            switch (atmoStabilityIndex)
+            {
+                case 'A':   //extremely unstable
+                case 'B':
+                case 'C':
+                case 'D':   //neutral
+                    break;
+                case 'E':
+                    dtheta = 0.01;
+                    break;
+                case 'F':   //moderately stable
+                    dtheta = 0.02;
+                    break;
+            }
 
-            // rotate the point ...
-            double px = burningPoint[0];
-            double py = burningPoint[1];
+            double S = 9.80665 * dtheta / (tAmb + 273);
+            double hFLW = 5*Math.Pow(F,0.25)*Math.Pow(S,-3/8);
+            double hFS = 2.4 * Math.Pow(F / (windVelocity * 0.278 * S), 0.333);
+            double hFNUS;
+            if (F<=51.6)
+            {
+                hFNUS = 21.425 * Math.Pow(F, 0.75) * Math.Pow(windVelocity * 0.278, -1);
+            }
+            else
+            {
+                hFNUS = 38.710*Math.Pow(F,0.6)*Math.Pow(windVelocity * 0.278,-1);
+            }
 
-            // about the point.
-            double cx = targetPoint[0];
-            double cy = targetPoint[1];
-
-            //mess with the wind to get it to point right
-            double theta = windAngle * Math.PI / 180;
-
-            //rotate the point (do not reproject about the stable point)
-            double p_x = Math.Cos(theta) * (px - cx) - Math.Sin(theta) * (py - cy);
-            double p_y = Math.Sin(theta) * (px - cx) + Math.Cos(theta) * (py - cy);
-
-            // Output the new coordinates
-            return [p_x, p_y];
-
+            double output = 0;
+            if (dtheta > 0.001)
+            {
+                output = new [] {hFS, hFLW, hFNUS}.Min();
+            }
+            else
+            {
+                output = hFNUS;
+            }
+            
+            return output + sourceElevation;
         }
-
-        private static double FindInjectionHeight(double sourceElevation, double smokeTemp, double exitVelocity, double windVelocity, double stackDiameter, double atmosphericP, double atmosphericTemp)
+        
+        /// <summary>
+        /// Find the injection height of the smoke 
+        /// </summary>
+        /// <param name="sourceElevation">The elevation of the smoke source point in m (double)</param>
+        /// <param name="smokeTemp">The temperature of the smoke approximately 1m above the fire in C (double)</param>
+        /// <param name="exitVelocity">The upwards velocity of the smoke approximately 1m above the fire in m/s (double)</param>
+        /// <param name="windVelocity">The wind speed at injection height in m/s (double). Finding this value required an iterative solution.</param>
+        /// <param name="stackDiameter">The cell size of the pixel representing the smoke source point in m (double)</param>
+        /// <param name="pAmb">Atmospheric pressure at ground level in bar (double)</param>
+        /// <param name="tAmb">Atmospheric temperature at ground level in C (double)</param>
+        /// <returns></returns>
+        private static double FindInjectionHeight_Holland(double sourceElevation, double smokeTemp, double exitVelocity, double windVelocity, double stackDiameter, double pAmb, double tAmb)
         {
-            // Method that calculate injection height
-            // 6 Inputs are double smoke temperature, double exit velocity, double wind velocity, double stack diameter, double atmospheic pressure, double atmospheric temperature
-            // Return injection height
-
             double a = 1; // ground reflection coefficient, usual conservative value is 1
 
             double steadyStateHeight = sourceElevation + (exitVelocity * stackDiameter / windVelocity) *
-                                   (1.5 + 2.68 * atmosphericP * stackDiameter *
-                                   (smokeTemp - atmosphericTemp) / (smokeTemp + 273));
+                                   (1.5 + 2.68 * pAmb * stackDiameter *
+                                   (smokeTemp - tAmb) / (smokeTemp + 273));
 
             return steadyStateHeight;
         }
-
-        public static double FindInjectionHeight_Andersen(double sourceHeight, double cellsize, double T_amb, double P_amb, double environemntalLapseRate, double dryAdiabaticLapseRate, double heatPUA)
+        /// <summary>
+        /// Find the smoke injection height according to Andersen
+        /// </summary>
+        /// <param name="sourceHeight">Height of the smoke source in m (double)</param>
+        /// <param name="cellsize">Size of the pixel represented by the source point in m (double)</param>
+        /// <param name="tAmb">Ambient ground level temperature in C (double)</param>
+        /// <param name="pAmb">Ambient ground level pressure in bar (double)</param>
+        /// <param name="environemntalLapseRate">Current environmental Lapse Rate in C/m (double)</param>
+        /// <param name="dryAdiabaticLapseRate">Adiabatic Lapse Rate in C/m (double)</param>
+        /// <param name="heatPua">Wildfire heat released per unit area in W/m2 (double)</param>
+        /// <returns>The predicted injection height in m (double)</returns>
+        public static double FindInjectionHeight_Andersen(double sourceHeight, double cellsize, double tAmb, double pAmb, double environemntalLapseRate, double dryAdiabaticLapseRate, double heatPua)
         {
-            T_amb = T_amb + 273;                                            //C to K
+            tAmb = tAmb + 273;                                            //C to K
             environemntalLapseRate = environemntalLapseRate / 1000;         //C/km to C/m
             dryAdiabaticLapseRate = dryAdiabaticLapseRate / 1000;           //C/km to C/m
-            heatPUA = heatPUA * 1000;                                       //kJ/m2 to J/m2
+            heatPua = heatPua * 1000;                                       //kJ/m2 to J/m2
 
-            double Q_supplied = heatPUA * (cellsize * cellsize) ;
+            double qSupplied = heatPua * (cellsize * cellsize) ;
 
             double tolerance = 100;
             int maxIterations = 100;
@@ -478,53 +532,64 @@ namespace Galini_C_
 
             double newGuess = 0;
 
-            double Q_required1 = AndersenRequiredEnergy(guess1, cellsize, T_amb, P_amb, environemntalLapseRate, dryAdiabaticLapseRate);
-            double Q_required2 = AndersenRequiredEnergy(guess2, cellsize, T_amb, P_amb, environemntalLapseRate, dryAdiabaticLapseRate);
+            double qRequired1 = AndersenRequiredEnergy(guess1, cellsize, tAmb, pAmb, environemntalLapseRate, dryAdiabaticLapseRate);
+            double qRequired2 = AndersenRequiredEnergy(guess2, cellsize, tAmb, pAmb, environemntalLapseRate, dryAdiabaticLapseRate);
 
 
-            while (Math.Abs(Q_supplied - Q_required2) > tolerance && iteration < maxIterations)
+            while (Math.Abs(qSupplied - qRequired2) > tolerance && iteration < maxIterations)
             {
                 // Secant Method formula
-                newGuess = guess2 - (Q_required2 - Q_supplied) * (guess2 - guess1) / (Q_required2 - Q_required1);
+                newGuess = guess2 - (qRequired2 - qSupplied) * (guess2 - guess1) / (qRequired2 - qRequired1);
 
                 // Update guesses and required energy
                 guess1 = guess2;
-                Q_required1 = Q_required2;
+                qRequired1 = qRequired2;
 
                 guess2 = newGuess;
-                Q_required2 = AndersenRequiredEnergy(guess2, cellsize, T_amb, P_amb, environemntalLapseRate, dryAdiabaticLapseRate);
+                qRequired2 = AndersenRequiredEnergy(guess2, cellsize, tAmb, pAmb, environemntalLapseRate, dryAdiabaticLapseRate);
 
                 iteration++;
             }
             return newGuess + sourceHeight;
         }
-
-        private static double AndersenRequiredEnergy(double injectionHeight, double cellsize, double T_amb, double P_amb, double environemntalLapseRate, double dryAdiabaticLapseRate)
+        /// <summary>
+        /// Find required energy to lift a parcel of air to a specific height, to use in the Andersen injection height calculation
+        /// </summary>
+        /// <param name="targetHeight">The target height for the air parcel to be lifted to in m (double)</param>
+        /// <param name="cellsize">The size of the individual cell represented by this point in m (double)</param>
+        /// <param name="tAmb">Ambient ground level temperature in C (double)</param>
+        /// <param name="pAmb">Ambient ground level pressure in bar (double)</param>
+        /// <param name="environemntalLapseRate">Current environmental Lapse Rate in C/m (double)</param>
+        /// <param name="dryAdiabaticLapseRate">Adiabatic Lapse Rate in C/m (double)</param>
+        /// <returns></returns>
+        private static double AndersenRequiredEnergy(double targetHeight, double cellsize, double tAmb, double pAmb, double environemntalLapseRate, double dryAdiabaticLapseRate)
         {
             //energy in J/kg
-            double energyPUM = -0.5 * 1001 * dryAdiabaticLapseRate * injectionHeight *
-                Math.Log(1 + (injectionHeight * (environemntalLapseRate - dryAdiabaticLapseRate)) / T_amb);
+            double energyPum = -0.5 * 1001 * dryAdiabaticLapseRate * targetHeight *
+                Math.Log(1 + (targetHeight * (environemntalLapseRate - dryAdiabaticLapseRate)) / tAmb);
             //mass in kg
-            double totalSmokeMass = (P_amb*cellsize*cellsize/9.81)*(1 - Math.Pow((1 + environemntalLapseRate * injectionHeight / T_amb), (-9.81 / (environemntalLapseRate * 287.05))));
+            double totalSmokeMass = (pAmb*cellsize*cellsize/9.81)*(1 - Math.Pow((1 + environemntalLapseRate * targetHeight / tAmb), (-9.81 / (environemntalLapseRate * 287.05))));
 
-            return  energyPUM * totalSmokeMass;
+            return  energyPum * totalSmokeMass;
         }
-
-        public static double TopDownRaster(double Height, double _x, double _y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
-        {   //  Method that calculate top-down smoke concentration at one target point due to one burning/smoldering point
-            // 8 Inputs:
-            // double maxHeight (300000m)
-            // double x,y coordinates in metre on smoke domain
-            // double y,z dispersion coefficients
-            // double emission mass flow rate,
-            // double wind velocity,
-            // double injection height
-            // Return top-down smoke concentration at one target point due to one burning/smoldering point
-
+        /// <summary>
+        /// Method to calculate the total smoke concentration above a specific point.
+        /// </summary>
+        /// <param name="height">The maximum height to be included in this calculation in m (double)</param>
+        /// <param name="x">The X coordinate of the target point (along wind direction) in m (double)</param>
+        /// <param name="y">The Y coordinate of the target point (perpendicular to wind direction) in m (double)</param>
+        /// <param name="dispersionCoefficientY">The sigma_y dispersion coefficient (double)</param>
+        /// <param name="dispersionCoefficientZ">The sigma_z dispersion coefficient (double)</param>
+        /// <param name="emissionMassFlowRate">The mass flow rate of the emissions in g/s (double)</param>
+        /// <param name="windVelocity">The velocity of the wind at the injection height in m/s (double)</param>
+        /// <param name="steadyStateHeight">The injection / steady state height of the smoke in meters (double)</param>
+        /// <returns>The total smoke concentration above the target point, in μg/m2 (double)</returns>
+        public static double TopDownRaster(double height, double x, double y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
+        {
             double termA = Math.Sqrt(Math.PI / 2) * (emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY)) *
-                            Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
+                            Math.Exp(-Math.Pow(y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
 
-            double zMax = Height;
+            double zMax = height;
             double zMin = 0;        //Hardcoded values instead of integrating 
 
             double termB = Erf((zMax - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
@@ -533,20 +598,25 @@ namespace Galini_C_
             double termC = Erf((zMin - steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2))) +
                             Erf((zMin + steadyStateHeight) / (dispersionCoefficientZ * Math.Sqrt(2)));
 
-            return termA * dispersionCoefficientZ * (termB - termC);
+            double output = termA * dispersionCoefficientZ * (termB - termC);
+
+            return output;
         }
-
-        public static double DriverLevelDensity(double targetHeight, double sourceHeight, double _x, double _y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
-        {   //  Method that calculate driver-level (1m) smoke concentration at one target point due to one burning/smoldering point
-            // 8 Inputs:
-            // double surface height of terrain on smoke domain
-            // double x,y coordinates in metre on smoke domain
-            // double y,z dispersion coefficients
-            // double emission mass flow rate,
-            // double wind velocity,
-            // double injection height
-            // Return driver-level smoke concentration at one target point due to one burning/smoldering point
-
+        /// <summary>
+        /// Method to calculate the smoke concentration (in μg/m3) at driver level (1m above ground level) at a specific point. This method assumes the source point is at (0,0) and the target point's coordinates are in relation to the direction of the wind.
+        /// </summary>
+        /// <param name="targetHeight">The height of the target point in m (double)</param>
+        /// <param name="sourceHeight">The height of the source point in m (double)</param>
+        /// <param name="x">The X coordinate of the target point (along wind direction) in m (double)</param>
+        /// <param name="y">The Y coordinate of the target point (perpendicular to wind direction) in m (double)</param>
+        /// <param name="dispersionCoefficientY">The sigma_y dispersion coefficient (double)</param>
+        /// <param name="dispersionCoefficientZ">The sigma_z dispersion coefficient (double)</param>
+        /// <param name="emissionMassFlowRate">The mass flow rate of the emissions in g/s (double)</param>
+        /// <param name="windVelocity">The velocity of the wind at the injection height in m/s (double)</param>
+        /// <param name="steadyStateHeight">The injection / steady state height of the smoke in meters (double)</param>
+        /// <returns>The concentration of smoke at the target point in μg/m3 (double)</returns>
+        public static double DriverLevelDensity(double targetHeight, double sourceHeight, double x, double y, double dispersionCoefficientY, double dispersionCoefficientZ, double emissionMassFlowRate, double windVelocity, double steadyStateHeight)
+        {   
             double h = targetHeight - sourceHeight;
             //h = (h > steadyStateHeight) ? steadyStateHeight : h;
 
@@ -557,268 +627,184 @@ namespace Galini_C_
             }
 
             double z = 1.0 + targetHeight ; //Driver level height
-            double term1 = emissionMassFlowRate / (Math.Sqrt(2 * Math.PI) * windVelocity * dispersionCoefficientZ * dispersionCoefficientY);
-            double term2 = Math.Exp(-Math.Pow(_y, 2) / (2 * Math.Pow(dispersionCoefficientY, 2)));
-            double term3 = Math.Exp(-Math.Pow(z - steadyStateHeight, 2) / (2 * Math.Pow(dispersionCoefficientZ, 2)));
-            double term4 = Math.Exp(-Math.Pow(z + steadyStateHeight - 2 * h, 2) / (2 * Math.Pow(dispersionCoefficientZ, 2)));
+            double term1 = emissionMassFlowRate / (2.5 * windVelocity * dispersionCoefficientZ * dispersionCoefficientY);
+            double term2 = Math.Exp(-(y*y) / (2 * dispersionCoefficientY * dispersionCoefficientY));
+            double term3 = Math.Exp(-(z - steadyStateHeight)*(z - steadyStateHeight) / (2 * dispersionCoefficientZ * dispersionCoefficientZ));
+            double term4 = Math.Exp(-(z + steadyStateHeight - 2 * h)*(z + steadyStateHeight - 2 * h) / (2 * dispersionCoefficientZ * dispersionCoefficientZ));
 
+            double output = term1 * term2 * (term3 + term4);
+            
             return term1 * term2 * (term3 + term4);
         }
 
-        public static (double[,], double[,], double[,], double[,], double[,], double[,]) DispersionModel(double[,] elevation,
-                                                                Dictionary<string, double> config,
-                                                                double[,] burningPoint_fireDomain,
-                                                                double[,] ROS,
-                                                                double[,] flamingEmissions,
-                                                                double[,] smolderingEmissions,
-                                                                double[] fireDomainDims,
-                                                                double[] dispCoeff,
-                                                                char atmoStabilityIndex,
-                                                                double[,] flamingTime,
-                                                                double[,] smolderingTime,
-                                                                double[,] subgridTime)
+        /// <summary>
+        /// Main entry point to calculate the current smoke concentration
+        /// </summary>
+        /// <param name="debug">Boolean to calculate additional outputs, such as total smoke concentration. Enabling this significantly increases computational time.</param>
+        public void DispersionModel(bool debug)
         {
-            //Method that calculates the total top-down & driver-level smoke concentration & smoke concentration below terrain surface for a landscape. 
-
-            //Returns the total top-down smoke concentration & driver-level smoke concentration & smoke concentration below terrain in the smoke domain.
-
-            //topDownRaster, driverLevelDensity, fireActivePoints, smolderActivePoints, injectionHeight, subgridTime
-
-            double windAngle = config["windAngle"];
-            double windVelocity = config["windVelocity"];
-            double scaleFactor = config["scaleFactor"];
-            double cellsizeFire = config["cellsize_fire"];
-            double cellsizeSmoke = config["cellsize_smoke"];
-            double T_amb = config["atmosphericTemp"];
-            double P_amb = config["atmosphericPressure"];
-            double environmentalLapseRate = config["environmentalLapseRate"];
-            double dryAdiabaticLapseRate = config["dryAdiabaticLapseRate"];
-
             double maxHeight = 300000;
+            double[] steadyStateHeight = [100,100]; //initial guess
+            double[] smokeTemp = [200, 75];
+            double[] exitVelocity = [2, 0.4];
+            double[] firelineIntensityConversionFactor = [1f, 0.3f];
 
-            if (windAngle == 0 || windAngle == 90 || windAngle == 180 || windAngle == 270)     //solve some divide by zero errors. 
-            {
-                windAngle += 0.1;
-            }
-            windAngle -= 90;
-            double WindAngle_rad = ( windAngle) * (Math.PI / 180);
-            double steadyStateHeight = 100;
+            if (_windAngle == 0 || _windAngle == 90 || _windAngle == 180 || _windAngle == 270) {_windAngle += 0.1;}  //solve some divide by zero errors. 
+            _windAngle -= 90;
+            double windAngleRad = ( _windAngle) * (Math.PI / 180);
+            
+            int rows = this._elevation.GetLength(0);
+            int cols = this._elevation.GetLength(1);
 
-            double w = fireDomainDims[0];
-            double l = fireDomainDims[1];
-            double[] smokeDomainDims = [scaleFactor * w * cellsizeFire / cellsizeSmoke, scaleFactor * l * cellsizeFire / cellsizeSmoke];
+            InitialiseOutputs();
 
-            int rows = (int)smokeDomainDims[0];
-            int cols = (int)smokeDomainDims[1];
-
-            double[,] topDownRaster = new double[rows, cols];
-            double[,] driverLevelDensity = new double[rows, cols];
-            double[,] fireActivePoints = new double[rows, cols];
-            double[,] smolderActivePoints = new double[rows, cols];
-            double[,] injectionHeight = new double[rows, cols];
-            double[,] subgridOut = new double[rows, cols];
-
-            //setup terrain in smoke domain (!!ASSUMING elevation.asc same cellsize as smoke domain)
-            double[,] elevationSmokeDomain = new double[rows, cols];
-            double elevationWidth = elevation.GetLength(0);
-            double elevationLength = elevation.GetLength(1);
-
-            for (int i  = 0; i < elevationWidth; i++)
-            {
-                for (int j = 0; j < elevationLength; j++)
-                {
-                    int a = (int) (rows / 2 - (elevationWidth / 2 - i));
-                    int b = (int)(rows/ 2 - (elevationWidth / 2 - j));
-                    elevationSmokeDomain[a, b] = elevation[i, j];
-                }
-            }
-
-            //setup progress bars
+            Console.WriteLine("Getting smoke emitting properties");
+            //Find all the gaussian model parameters of each point emitting smoke (arrays are [flaming,smoldering])
+            // i and j below are in ROS raster coordinates
             int totalBurningCells = 0;
-            for (int i = 0; i < w; i++)
+            List<double> burningElevations = new List<double>();
+            List<double[]> injectionMassFlowrates = new List<double[]>();
+            List<double[]> steadyStateHeights = new List<double[]>();
+            List<int[]> burningCoords = new List<int[]>();
+            List<double[]> phases = new List<double[]>();
+            for (int i = 0; i < this._ros.GetLength(0); i++)
             {
-                for (int j = 0; j < l; j++)
+                for (int j = 0; j < this._ros.GetLength(1); j++)
                 {
                     // check if the point is producing smoke (burning or smoldering)
-                    if (burningPoint_fireDomain[i, j] != 0)
+                    if (this.currentlyBurning[i, j] != 0)
                     {
                         totalBurningCells++;
+                        int[] elevCoords = [i - (int)_rasterDelta[0], j - (int)_rasterDelta[1]];
+                        double[] currentPhases = AdjustForSubgrid(i, j);
+                        phases.Add(currentPhases);
+                        burningCoords.Add(elevCoords);
+                        burningElevations.Add(this._elevation[elevCoords[0],elevCoords[1]]);
+                        injectionMassFlowrates.Add([
+                            this._flamingEmissions[i, j] / this._flamingTime[i, j],
+                            this._smolderingEmissions[i, j] / this._smolderingEmissions[i, j]
+                        ]);
+                        
+                        for (int phase = 0; phase<=1; phase++)
+                        {
+                            steadyStateHeight[phase] = 0f;
+                            if (currentPhases[phase] > 0)
+                            {
+                                if (phase == 0)
+                                {
+                                    this._fireActivePoints[elevCoords[0],elevCoords[1]] = 1;
+                                }
+                                else
+                                {
+                                    this._smolderActivePoints[elevCoords[0],elevCoords[1]] = 1;
+                                }
+                                steadyStateHeight[phase] = FindInjectionHeight_Briggs(_atmoStabilityIndex,this._elevation[i, j],
+                                    this._firelineIntensity[i, j] * firelineIntensityConversionFactor[phase], this._windVelocity,
+                                    this._tAmb, this._cellsize);
+                                //double delta = 11;
+                                //while (Math.Abs(delta) > 3)
+                                //{
+                                    //steadyStateHeight[phase] = FindInjectionHeight_Holland(this._elevation[i, j], smokeTemp[phase], exitVelocity[phase], _windVelocity * 0.277778, this._cellsize, _pAmb / 100000, _tAmb);
+                                    //_windVelocity = HellmannWindAdjust(Config["windVelocity"], Config["RAWSelevation"], steadyStateHeight[phase], _atmoStabilityIndex);
+                                    //delta = steadyStateHeight[phase] - FindInjectionHeight_Holland(_elevation[i, j], smokeTemp[phase], exitVelocity[phase], _windVelocity * 0.277778, _cellsize, _pAmb / 100000, _tAmb);
+                                //}
+                                _injectionHeight[i, j] = steadyStateHeight[phase];
+                            }
+                        }
+                        steadyStateHeights.Add(steadyStateHeight);
                     }
                 }
             }
-
-            //bool[,,,] isInShadow = GetShadows(elevation);
 
             int count = 0;
+            float output = 0;
             Console.WriteLine("Calculating Smoke Concentration");
-            for (int i = 0; i < w; i++)
+            
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            
+            //below i and j are smoke / elevation domain coordinates
+            Parallel.For(0, this._elevation.GetLength(0), i =>
             {
-                for (int j = 0; j < l; j++)
+                for (int j = 0; j < this._elevation.GetLength(1); j++)
                 {
                     // check if the point is producing smoke (burning or smoldering)
-                    if (burningPoint_fireDomain[i, j] != 0)
+
+                    count++;
+                    this._subgridOut[i, j] = this.SubgridTime[i, j];
+
+                    for (int burnPoint = 0; burnPoint < burningElevations.Count; burnPoint++)
                     {
-                        count++;
-
-                        double[] burningPoint_smokeDomain = [(scaleFactor * w / 2 - (w / 2 - i)) * cellsizeFire / cellsizeSmoke, (scaleFactor * l / 2 - (l / 2 - j)) * cellsizeFire / cellsizeSmoke];
-                        //double[] burningPoint_smokeDomain = [i, j];
-
-
-                        // define a boundary line y = kx + b, where no smoke spread to the side opposing wind direction
-                        double k = -Math.Tan(WindAngle_rad);
-                        double b = burningPoint_smokeDomain[1] - burningPoint_smokeDomain[0] * k;
-
-                        int lowerBound;
-                        int upperBound;
-                        double injectionMassFlowrate = 0;
-                        string fireStatus = "No Fire";
-                        double smokeTemp = 273;
-                        double exitVelocity = 1;
-                        double[] phases = AdjustForSubgrid(flamingTime[i, j], smolderingTime[i, j], ROS[i, j], cellsizeFire, subgridTime[i, j]);
-
-                        subgridOut[i, j] = subgridTime[i,j];
-
-                        //steadyStateHeight = FindInjectionHeight_Andersen(elevationSmokeDomain[i, j], cellsize_Fire, T_amb, P_amb, environmentalLapseRate, dryAdiabaticLapseRate, heatPUA_point);
-
-                        
-                        //Console.WriteLine($" ---- {100 * count / totalBurningCells}% done, current point [ {i}, {j} ], Injection Height: {steadyStateHeight.ToString(".0")} meters");
-
-                        //double heatOfCombustion = (burningPoint_fireDomain[i, j] == 1) ? 1 : 1/3; //smoldering combustion 
-
-                        if (phases[0] > 0)
+                        for (int phase = 0; phase <= 1; phase++)
                         {
-                            injectionMassFlowrate = (flamingEmissions[i, j] / flamingTime[i, j]) * phases[0];
-                            smokeTemp = 300;
-                            exitVelocity = 2;
-                            fireActivePoints[i, j] = phases[0];
-                            fireStatus = "Flaming";
-
-                            double delta = 11;
-                            while (Math.Abs(delta) > 3)
+                            if (phases[burnPoint][phase] != 0)
                             {
-                                steadyStateHeight = FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsizeFire, P_amb / 100000, T_amb);
-                                windVelocity = HellmannWindAdjust(config["windVelocity"], config["RAWSelevation"], steadyStateHeight, atmoStabilityIndex);
-                                delta = steadyStateHeight - FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsizeFire, P_amb / 100000, T_amb);
-                            }
-                            injectionHeight[i, j] = steadyStateHeight;
-
-                            for (int x = 0; x < rows; x++)
-                            {
-                                int Ybound = (int)(k * x + b); // boundary line in terms of y, changing with x
-                                                               // for certain x, Ybound becomes negative, out of smoke domain, reset to zero
-                                if (Ybound < 0) { Ybound = 0; }
-                                if (Ybound > cols) { Ybound = cols; }
-
-                                if (windAngle >= 90 && windAngle <= 270) // wind pointing upwards, in y direction, smoke spreads from boundary line to top of domain (y = cols)
+                                output = (float)burningElevations[burnPoint];
+                                double[] xYplume =
+                                    GetCoordsAboutWindAxis(burningCoords[burnPoint], [i, j],
+                                        _windAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
+                                
+                                //when the target point is the burning point
+                                //XYplume is zero, the zero occurs in the denominator of TopDownRaster function, TopDownRaster function died, so just add 0 instead of running the function.
+                                if (!(xYplume[0] == 0 && xYplume[1] == 0) && xYplume[0]>=0)
                                 {
-                                    lowerBound = Ybound;
-                                    upperBound = cols;
-                                }
-                                else // wind pointing downwards, in y direction, smoke spreads from boundary line to bottom of domain (y=0)
-                                {
-                                    lowerBound = 0;
-                                    upperBound = Ybound;
-                                }
+                                    double x = xYplume[0] * _cellsize;
+                                    double y = xYplume[1] * _cellsize; //convert to meters
 
-                                for (int y = lowerBound; y < upperBound; y++)
-                                {
-                                    double[] XYplume = GetCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], windAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
-
-                                    //when the target point is the burning point
-                                    //XYplume is zero, the zero occurs in the denominator of TopDownRaster function, TopDownRaster function died, so just add 0 instead of running the function.
-                                    if (!(XYplume[0] == 0 && XYplume[1] == 0))
+                                    double dispersionCoefficientY =
+                                        _dispCoeff[0] * x * Math.Pow(1 + _dispCoeff[1] * x, _dispCoeff[2]);
+                                    double dispersionCoefficientZ =
+                                        _dispCoeff[3] * x *
+                                        Math.Pow(1 + _dispCoeff[4] * x, _dispCoeff[5]); //get s_y, s_z for this point
+                                    
+                                    if (debug)
                                     {
-                                        double _x = XYplume[0] * cellsizeSmoke;
-                                        double _y = XYplume[1] * cellsizeSmoke;      //convert to meters
-
-                                        double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
-                                        double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
-
-                                        topDownRaster[x, y] += TopDownRaster(maxHeight, _x, _y, dispersionCoefficientY, dispersionCoefficientZ, injectionMassFlowrate, windVelocity, steadyStateHeight);
-                                        driverLevelDensity[x, y] += DriverLevelDensity(elevationSmokeDomain[x, y], elevationSmokeDomain[(int)burningPoint_smokeDomain[0], (int)burningPoint_smokeDomain[1]], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, injectionMassFlowrate, windVelocity, steadyStateHeight);
-                                        
+                                        _topDownRaster[i, j] += TopDownRaster(maxHeight, x, y, dispersionCoefficientY,
+                                            dispersionCoefficientZ, injectionMassFlowrates[burnPoint][phase],
+                                            _windVelocity,
+                                            steadyStateHeights[burnPoint][phase]);
                                     }
+
+                                    _driverLevelDensity[i, j] += 0.6*DriverLevelDensity(this._elevation[i, j],
+                                        burningElevations[burnPoint], x, y, dispersionCoefficientY,
+                                        dispersionCoefficientZ, injectionMassFlowrates[burnPoint][phase], _windVelocity,
+                                        steadyStateHeights[burnPoint][phase]) + 0.4*DriverLevelDensity(this._elevation[i, j],
+                                        burningElevations[burnPoint], x, y, dispersionCoefficientY,
+                                        dispersionCoefficientZ, injectionMassFlowrates[burnPoint][phase], _windVelocity,
+                                        burningElevations[burnPoint]);
                                 }
                             }
                         }
-                        if (phases[1] > 0)
-                        {
-                            smokeTemp = 75;
-                            exitVelocity = 0.4;
-                            smolderActivePoints[i, j] = phases[1];
-                            fireStatus = "Smoldering";
-                            injectionMassFlowrate = (smolderingEmissions[i, j] / smolderingTime[i, j]) * phases[1];
-
-                            double delta = 11;
-                            while (Math.Abs(delta) > 3)
-                            {
-                                steadyStateHeight = FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsizeFire, P_amb / 100000, T_amb);
-                                windVelocity = HellmannWindAdjust(config["windVelocity"], config["RAWSelevation"], steadyStateHeight, atmoStabilityIndex);
-                                delta = steadyStateHeight - FindInjectionHeight(elevationSmokeDomain[i, j], smokeTemp, exitVelocity, windVelocity * 0.277778, cellsizeFire, P_amb / 100000, T_amb);
-                            }
-                            injectionHeight[i, j] = steadyStateHeight;
-
-                            for (int x = 0; x < rows; x++)
-                            {
-                                int Ybound = (int)(k * x + b)+1; // boundary line in terms of y, changing with x
-                                                               // for certain x, Ybound becomes negative, out of smoke domain, reset to zero
-                                if (Ybound < 0) { Ybound = 0; }
-                                if (Ybound > cols) { Ybound = cols; }
-
-                                if (windAngle >= 90 && windAngle <= 270) // wind pointing upwards, in y direction, smoke spreads from boundary line to top of domain (y = cols)
-                                {
-                                    lowerBound = Ybound;
-                                    upperBound = cols;
-                                }
-                                else // wind pointing downwards, in y direction, smoke spreads from boundary line to bottom of domain (y=0)
-                                {
-                                    lowerBound = 0;
-                                    upperBound = Ybound;
-                                }
-
-                                for (int y = lowerBound; y < upperBound; y++)
-                                {
-                                    double[] XYplume = GetCoordsAboutWindAxis(burningPoint_smokeDomain, [x, y], windAngle); //get point dimensions in relation to the burning point (0,0) and the wind direction (x axis)
-
-                                    //when the target point is the burning point
-                                    //XYplume is zero, the zero occurs in the denominator of TopDownRaster function, TopDownRaster function died, so just add 0 instead of running the function.
-                                    if (!(XYplume[0] == 0 && XYplume[1] == 0))
-                                    {
-                                        double _x = XYplume[0] * cellsizeSmoke;
-                                        double _y = XYplume[1] * cellsizeSmoke;      //convert to meters
-
-                                        _x = (_x == 0) ? _x + 0.05 : _x;
-
-                                        double dispersionCoefficientY = dispCoeff[0] * _x * Math.Pow(1 + dispCoeff[1] * _x, dispCoeff[2]);
-                                        double dispersionCoefficientZ = dispCoeff[3] * _x * Math.Pow(1 + dispCoeff[4] * _x, dispCoeff[5]);      //get s_y, s_z for this point
-
-                                        topDownRaster[x, y] += TopDownRaster(maxHeight, _x, _y, dispersionCoefficientY, dispersionCoefficientZ, injectionMassFlowrate, windVelocity, steadyStateHeight);
-                                        driverLevelDensity[x, y] += DriverLevelDensity(elevationSmokeDomain[x, y], elevationSmokeDomain[(int)burningPoint_smokeDomain[0], (int)burningPoint_smokeDomain[1]], _x, _y, dispersionCoefficientY, dispersionCoefficientZ, injectionMassFlowrate, windVelocity, steadyStateHeight);
-
-                                        if (Double.IsNaN(topDownRaster[x,y]))
-                                        {
-                                            topDownRaster[x, y] = 0;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        Console.Write($"\r ---- {100 * count / totalBurningCells}% done, current point [ {i}, {j} ], Injection Height: {steadyStateHeight.ToString(".0")} meters, Current Phase: {fireStatus}");
+                        //Console.Write($"\r ---- {100 * count / (this._elevation.GetLength(0)*this._elevation.GetLength(1))}% done, current point [ {i}, {j} ], Injection Height: {(output-_elevation[i, j]).ToString(".0")} meters                     ");
                     }
                 }
-            }
+            });
+            stopwatch.Stop();
+            Console.WriteLine($"Timestep Complete. Elapsed Time: {stopwatch.Elapsed}");
+            Console.WriteLine("============================");
             Console.WriteLine(" ");
-            return (topDownRaster, driverLevelDensity, fireActivePoints, smolderActivePoints, injectionHeight, subgridTime);
         }
 
-        public static double[] AdjustForSubgrid(double fireTime, double smolderTime, double ROS, double cell, double currentTime)
+        /// <summary>
+        /// Get subgrid scaling value for current timestep
+        /// </summary>
+        /// <param name="i">1st coordinate of point</param>
+        /// <param name="j">2nd coordinate of point</param>
+        /// <returns>2-element array of scaling factors [flaming, smoldering]</returns>
+        private double[] AdjustForSubgrid(int i, int j)
         {
-            double maxFlamingOutputFraction = Math.Clamp(ROS * fireTime / cell, 0, 1);
-            double maxSmolderingOutputFraction = Math.Clamp(ROS * smolderTime / cell, 0, 1);
+            double fireTime = this._flamingTime[i, j];
+            double smolderTime = this._smolderingTime[i, j];
+            double ros = this._ros[i, j];
+            double cell = this._cellsize;
+            double currentTime = this.SubgridTime[i, j];
+            
+            double maxFlamingOutputFraction = Math.Clamp(ros * fireTime / cell, 0, 1);
+            double maxSmolderingOutputFraction = Math.Clamp(ros * smolderTime / cell, 0, 1);
             double flaming = 0;
             double smoldering = 0;
 
-            if (ROS < 0) 
+            if (ros < 0) 
             {
                 return [0, 0];
             }
@@ -831,33 +817,67 @@ namespace Galini_C_
             {
                 flaming =  currentTime / fireTime;
             }
-            else if (currentTime <= cell / ROS) 
+            else if (currentTime <= cell / ros) 
             {
                 flaming =  1;
             }
-            else if (currentTime <= fireTime + cell / ROS)
+            else if (currentTime <= fireTime + cell / ros)
             {
-                flaming = 1 - (currentTime - cell/ROS) / fireTime;
+                flaming = 1 - (currentTime - cell/ros) / fireTime;
             }
 
             if (currentTime <= fireTime)
             {
                 smoldering = 0;
             }
-            else if (currentTime <= fireTime + cell / ROS)
+            else if (currentTime <= fireTime + cell / ros)
             {
-                smoldering = (currentTime - fireTime) / (cell/ROS);
+                smoldering = (currentTime - fireTime) / (cell/ros);
             }
             else if (currentTime <= fireTime + smolderTime)
             {
                 smoldering = 1;
             }
-            else if (currentTime <= fireTime + smolderTime + cell / ROS)
+            else if (currentTime <= fireTime + smolderTime + cell / ros)
             {
-                smoldering = 1 - (currentTime - fireTime - smolderTime) / (cell / ROS);
+                smoldering = 1 - (currentTime - fireTime - smolderTime) / (cell / ros);
             }
 
             return [flaming * maxFlamingOutputFraction, smoldering * maxSmolderingOutputFraction];
+        }
+        /// <summary>
+        /// Set the dimensions for the output rasters
+        /// </summary>
+        private void InitialiseOutputs()
+        {
+            int rows = this._elevation.GetLength(0);
+            int cols = this._elevation.GetLength(1);
+            this._topDownRaster = new double[rows, cols];
+            this._driverLevelDensity = new double[rows, cols];
+            this._fireActivePoints = new double[rows, cols];
+            this._smolderActivePoints = new double[rows, cols];
+            this._injectionHeight = new double[rows, cols];
+            this._subgridOut = new double[rows, cols];
+        }
+        /// <summary>
+        /// Save the current smoke simulation timestep in csv format.
+        /// </summary>
+        /// <param name="path">The folder where the outputs will be saved (ending with /)</param>
+        /// <param name="totalTime">The current elapsed simulation time (to append to output file name)</param>
+        /// <param name="debug">Boolean to control whether additional rasters will be saved to files (if True)</param>
+        public void SaveTimestep(string path, int totalTime, bool debug = false)
+        {
+            Helpers.WriteMatrixToCsv(this._driverLevelDensity, path + totalTime.ToString() + "driverLevelDensity.csv");
+            if (debug)
+            {
+                Helpers.WriteMatrixToCsv(_topDownRaster, path + totalTime.ToString() + "topDownRaster.csv");
+                Helpers.WriteMatrixToCsv(_fireActivePoints, path + totalTime.ToString() + "flamingAmount.csv");
+                Helpers.WriteMatrixToCsv(_smolderActivePoints, path + totalTime.ToString() + "smolderingAmount.csv");
+                Helpers.WriteMatrixToCsv(_injectionHeight, path + totalTime.ToString() + "injectionHeight.csv");
+                Helpers.WriteMatrixToCsv(_subgridOut, path + totalTime.ToString() + "subgridTime.csv");
+            }
+            Console.WriteLine("Outputs Saved!");
+            Console.WriteLine(("============================"));
         }
     }
 }

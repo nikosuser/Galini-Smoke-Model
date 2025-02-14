@@ -9,19 +9,18 @@ using System.Threading.Tasks;
 
 namespace Galini_C_
 {
-    internal class FOFEM
+    internal class Fofem
     {
-        public static void usage()
-
+        public static void Usage()
         {
             Console.WriteLine("usage: gdaldatasetwrite {dataset name}");
             System.Environment.Exit(-1);
         }
 
-        public static void save(string[] args)
+        public static void Save(string[] args)
         {
 
-            if (args.Length < 1) usage();
+            if (args.Length < 1) Usage();
 
             int bXSize, bYSize;
             int w, h;
@@ -92,26 +91,95 @@ namespace Galini_C_
 
             }
         }
-        public static void saveFCCStiff(string inputFile, string outputFile, double[,] SBfuels)
+        /// <summary>
+        /// Save FCCS fuel map to geoTIFF 
+        /// </summary>
+        /// <param name="outputFile">FCCS fuel model raster file save location</param>
+        public static void SaveFccStiff(string outputFile, double[,] fccs)
         {
-
-            //-----------------------------------------------------------------------------------------------------
-            /*
-            double[,] data = Helpers.ReadGeoTIFFfile(inputFile);
-
-            for (int i = 0; i < data.GetLength(0); i++)
+            Helpers.SaveGeoTiff(outputFile, fccs);
+        }
+        /// <summary>
+        /// Convert an SB40 fuel map to FCCS. Conversion is based on a dictionary in the accompanying paper. 
+        /// </summary>
+        /// <param name="sBfuels">Scott and Burgan 40 fuel model map (int[,])</param>
+        /// <returns>the FCCS fuel map raster (int[,]</returns>
+        public static int[,] SBtoFccs(int[,] sBfuels)
+        {
+            Dictionary<int, int> sBtoFccSarray = new Dictionary<int, int>()
             {
-                for (int j = 0; j < data.GetLength(1); j++)
+            { 0, 0 },
+            { 91, 0 },
+            { 92, 0 },
+            { 93, 1244 },
+            { 98, 0 },
+            { 99, 0 },
+            { 100, 49 },
+            { 101, 519 },
+            { 102, 66 },
+            { 103, 66 },
+            { 104, 131 },
+            { 105, 131 },
+            { 106, 66 },
+            { 107, 318 },
+            { 108, 175 },
+            { 120, 401 },
+            { 121, 56 },
+            { 122, 308 },
+            { 123, 560112 },
+            { 124, 445 },
+            { 140, 49 },
+            { 141, 69 },
+            { 142, 52 },
+            { 143, 36 },
+            { 144, 69 },
+            { 145, 210 },
+            { 146, 470 },
+            { 147, 154 },
+            { 148, 1470313 },
+            { 149, 154 },
+            { 160, 10 },
+            { 161, 224 },
+            { 162, 156 },
+            { 163, 156 },
+            { 164, 59 },
+            { 165, 2 },
+            { 180, 49 },
+            { 181, 154 },
+            { 182, 283 },
+            { 183, 110 },
+            { 184, 305 },
+            { 185, 364 },
+            { 186, 154 },
+            { 187, 228 },
+            { 188, 90 },
+            { 189, 467 },
+            { 200, 1090412 },
+            { 201, 48 },
+            { 202, 1100422 },
+            { 203, 4550432 },
+            { -9999, -9999 }
+            };
+            
+            int[,] fccSfuels = new int[sBfuels.GetLength(0), sBfuels.GetLength(1)];
+            for (int i = 0; i < sBfuels.GetLength(0); i++)
+            {
+                for (int j = 0; j< sBfuels.GetLength(1); j++)
                 {
-                    data[i, j] = (float)DispersionModelling.SBtoFCCS((int)SBfuels[i, j]);
+                    fccSfuels[i, j] = sBtoFccSarray[sBfuels[i, j]];
                 }
             }
-            */
-            Helpers.SaveGeoTIFF(outputFile, SBfuels);
 
+            return fccSfuels;
         }
-
-        public static void runFOFEM(double[,] SBfuels, string simulationPath, string fofemInputFileLoc, string fccsFuelfilename, double[,] fuelMoisture) { 
+        /// <summary>
+        /// Run the TestSpatialFOFEM.exe program by creating its input file and running an internal command.
+        /// </summary>
+        /// <param name="simulationPath">Path to save the FOFEM outputs (string)</param>
+        /// <param name="fofemInputFileLoc">Name of the FOFEM input file (arbitrary) (string)</param>
+        /// <param name="fccsFuelfilename">Full path of the FCCS fuel map raster (string) </param>
+        /// <param name="fuelMoisture">Fuel moistures of each fuel, same as a FARSITE/FLAMMAP .fms file (double[,])</param>
+        public static void RunFofem(string simulationPath, string fofemInputFileLoc, string fccsFuelfilename, double[,] fuelMoisture) { 
 
             fofemInputFileLoc = simulationPath + fofemInputFileLoc;
 
@@ -137,18 +205,8 @@ namespace Galini_C_
                 thousandHourMoisture = fuelMoisture[1, 6];
             }
 
-            double[,] FCCSfuels = new double[SBfuels.GetLength(0), SBfuels.GetLength(1)];
-            for (int i = 0; i < SBfuels.GetLength(0); i++)
-            {
-                for (int j = 0; j< SBfuels.GetLength(1); j++)
-                {
-                    FCCSfuels[i, j] = DispersionModelling.SBtoFCCS((int)SBfuels[i, j]);
-                }
-            }
 
-            saveFCCStiff("fuel.asc", simulationPath + fccsFuelfilename, FCCSfuels);
-
-            string[] FOFEMinputfile = {$"FCCS_Layer_File: "+ fccsFuelfilename,
+            string[] fofeMinputfile = {$"FCCS_Layer_File: {simulationPath}/{fccsFuelfilename}",
             "FCCS_Layer_Number: 1",
             "FOFEM_Percent_Foliage_Branch_Consumed: 75.0",
             "FOFEM_Region: I",
@@ -173,16 +231,16 @@ namespace Galini_C_
             "FOFEM_TOTAL_FUEL_CONSUMED: ",
             };
             // Writelines to the FOFEM input file
-            Helpers.AppendLinesToFile(fofemInputFileLoc, FOFEMinputfile); 
+            Helpers.AppendLinesToFile(fofemInputFileLoc, fofeMinputfile); 
             
             Console.WriteLine("FOFEM Input File Saved, Starting FOFEM!");
 
             // Execute FOFEM command
             string externalProgram = simulationPath + "/bin/TestSpatialFOFEM.exe";
             string outputFolder = simulationPath + "/FOFEMoutput/";
-            string commandFOFEM = $" {simulationPath}/setEnv.bat && {externalProgram} {fofemInputFileLoc} {outputFolder}";
-            commandFOFEM = commandFOFEM.Replace("\\", "/");
-            Helpers.ExecuteCommand(commandFOFEM);
+            string commandFofem = $" {simulationPath}/setEnv.bat && {externalProgram} {fofemInputFileLoc} {outputFolder}";
+            commandFofem = commandFofem.Replace("\\", "/");
+            Helpers.ExecuteCommand(commandFofem);
 
             Console.WriteLine("FOFEM Complete");
 
